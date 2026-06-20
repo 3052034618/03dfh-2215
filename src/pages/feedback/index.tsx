@@ -5,8 +5,9 @@ import classnames from 'classnames';
 import { useAppStore } from '@/store';
 import { uploadPhotos, submitFeedback } from '@/services';
 import { speakIfEnabled } from '@/utils';
+import { CHECK_ITEM_OPTIONS } from '@/data/constants';
+import { CheckItemResult, CheckItemKey, FeedbackItem } from '@/types';
 import styles from './index.module.scss';
-import type { FeedbackItem } from '@/types';
 
 type FeedbackType = 'checked' | 'need_help' | 'photo';
 
@@ -51,12 +52,23 @@ const statusMeta: Record<FeedbackItem['status'], { text: string; class: string }
 };
 
 const FeedbackPage: React.FC = () => {
-  const { task, feedbacks, addFeedback, voiceEnabled } = useAppStore();
+  const { task, feedbacks, tempAlerts, addFeedback, voiceEnabled } = useAppStore();
 
   const [feedbackType, setFeedbackType] = useState<FeedbackType>('checked');
   const [content, setContent] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedAlertId, setSelectedAlertId] = useState<string>('');
+  const [checkResults, setCheckResults] = useState<Record<CheckItemKey, 'normal' | 'abnormal' | 'uncheck'>>({
+    door_seal: 'uncheck',
+    refrigeration: 'uncheck',
+    fuel: 'uncheck'
+  });
+
+  const activeAlerts = useMemo(
+    () => tempAlerts.filter(a => !a.handled && !a.resolved),
+    [tempAlerts]
+  );
 
   const sortedFeedbacks = useMemo(
     () => [...feedbacks].sort((a, b) => new Date(b.createTime).getTime() - new Date(a.createTime).getTime()),
@@ -66,23 +78,24 @@ const FeedbackPage: React.FC = () => {
   const handleQuickAction = useCallback((type: FeedbackType) => {
     setFeedbackType(type);
     if (type === 'checked') {
-      setContent(prev => prev || '已按要求检查门封、制冷机组及油量，一切正常');
+      setContent(prev => prev || '已按要求检查门封、制冷机组及油量');
     } else if (type === 'need_help') {
       setContent(prev => prev || '');
     } else {
       setContent(prev => prev || '现场情况记录');
     }
+    if (activeAlerts.length > 0 && !selectedAlertId) {
+      setSelectedAlertId(activeAlerts[0].id);
+    }
     if (type === 'photo') {
       handleAddPhoto();
     }
-    console.log('[FeedbackPage] handleQuickAction:', type);
-  }, []);
+  }, [activeAlerts, selectedAlertId]);
 
   const handleAddPhoto = useCallback(async () => {
     try {
       const paths = await uploadPhotos(3 - photos.length);
       setPhotos(prev => [...prev, ...paths].slice(0, 3));
-      console.log('[FeedbackPage] handleAddPhoto count:', paths.length);
     } catch (e) {
       console.error('[FeedbackPage] handleAddPhoto error:', e);
     }
@@ -91,6 +104,24 @@ const FeedbackPage: React.FC = () => {
   const handleRemovePhoto = useCallback((index: number) => {
     setPhotos(prev => prev.filter((_, i) => i !== index));
   }, []);
+
+  const handleCheckToggle = useCallback((key: CheckItemKey) => {
+    setCheckResults(prev => {
+      const current = prev[key];
+      const next = current === 'uncheck' ? 'normal' : current === 'normal' ? 'abnormal' : 'uncheck';
+      return { ...prev, [key]: next };
+    });
+  }, []);
+
+  const getCheckItems = useCallback((): CheckItemResult[] => {
+    return CHECK_ITEM_OPTIONS
+      .filter(opt => checkResults[opt.key] !== 'uncheck')
+      .map(opt => ({
+        key: opt.key,
+        label: opt.label,
+        status: checkResults[opt.key] as 'normal' | 'abnormal'
+      }));
+  }, [checkResults]);
 
   const canSubmit = useMemo(() => {
     if (!task) return false;
@@ -106,8 +137,10 @@ const FeedbackPage: React.FC = () => {
     try {
       const feedbackData = {
         taskId: task.id,
+        alertId: selectedAlertId || undefined,
         type: feedbackType,
         content: content.trim(),
+        checkItems: getCheckItems().length > 0 ? getCheckItems() : undefined,
         photos: photos.length > 0 ? photos : undefined
       };
       await submitFeedback(feedbackData);
@@ -121,19 +154,22 @@ const FeedbackPage: React.FC = () => {
       );
       setContent('');
       setPhotos([]);
-      console.log('[FeedbackPage] handleSubmit success');
+      setSelectedAlertId('');
+      setCheckResults({ door_seal: 'uncheck', refrigeration: 'uncheck', fuel: 'uncheck' });
     } catch (e) {
       console.error('[FeedbackPage] handleSubmit error:', e);
       Taro.showToast({ title: '发送失败，请重试', icon: 'error' });
     } finally {
       setSubmitting(false);
     }
-  }, [canSubmit, task, feedbackType, content, photos, addFeedback, voiceEnabled]);
+  }, [canSubmit, task, feedbackType, content, photos, selectedAlertId, getCheckItems, addFeedback, voiceEnabled]);
 
   const handleReset = useCallback(() => {
     setContent('');
     setPhotos([]);
     setFeedbackType('checked');
+    setSelectedAlertId('');
+    setCheckResults({ door_seal: 'uncheck', refrigeration: 'uncheck', fuel: 'uncheck' });
   }, []);
 
   const placeholderMap: Record<FeedbackType, string> = {
@@ -144,7 +180,6 @@ const FeedbackPage: React.FC = () => {
 
   return (
     <ScrollView scrollY className={styles.page} refresherEnabled>
-      {/* 快速操作区 */}
       <View className={styles.quickActions}>
         <Text className={styles.qaTitle}>快捷反馈</Text>
         <View className={styles.qaButtons}>
@@ -180,7 +215,6 @@ const FeedbackPage: React.FC = () => {
         </View>
       </View>
 
-      {/* 反馈表单 */}
       <View className={styles.formSection}>
         <View className={styles.formCard}>
           <View className={styles.formHeader}>
@@ -188,6 +222,65 @@ const FeedbackPage: React.FC = () => {
             <View className={classnames(styles.formTypeTag, typeMeta[feedbackType].tagClass)}>
               {typeMeta[feedbackType].tagText}
             </View>
+          </View>
+
+          {activeAlerts.length > 0 && (
+            <>
+              <Text className={styles.formLabel}>关联温度预警</Text>
+              <View className={styles.alertSelector}>
+                {activeAlerts.map(alert => (
+                  <View
+                    key={alert.id}
+                    className={classnames(
+                      styles.alertOption,
+                      selectedAlertId === alert.id && styles.alertOptionSelected
+                    )}
+                    onClick={() => setSelectedAlertId(alert.id)}
+                  >
+                    <Text className={styles.alertOptionSeverity}>
+                      {alert.severity === 'danger' ? '🔴' : '🟠'}
+                    </Text>
+                    <View className={styles.alertOptionContent}>
+                      <Text className={styles.alertOptionTemp}>
+                        {alert.currentTemp.toFixed(1)}℃
+                      </Text>
+                      <Text className={styles.alertOptionTime}>{alert.time}</Text>
+                    </View>
+                    {selectedAlertId === alert.id && (
+                      <Text className={styles.alertOptionCheck}>✓</Text>
+                    )}
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
+
+          <Text className={styles.formLabel}>
+            逐项检查（点击切换：未检 → 正常 → 异常）
+          </Text>
+          <View className={styles.checkItemsRow}>
+            {CHECK_ITEM_OPTIONS.map(opt => {
+              const state = checkResults[opt.key];
+              return (
+                <View
+                  key={opt.key}
+                  className={classnames(
+                    styles.checkItem,
+                    state === 'normal' && styles.checkItemNormal,
+                    state === 'abnormal' && styles.checkItemAbnormal
+                  )}
+                  onClick={() => handleCheckToggle(opt.key)}
+                >
+                  <Text className={styles.checkItemIcon}>
+                    {state === 'normal' ? '✅' : state === 'abnormal' ? '❌' : '⬜'}
+                  </Text>
+                  <Text className={styles.checkItemLabel}>{opt.label}</Text>
+                  <Text className={styles.checkItemStatus}>
+                    {state === 'normal' ? opt.normalLabel : state === 'abnormal' ? opt.abnormalLabel : '未检'}
+                  </Text>
+                </View>
+              );
+            })}
           </View>
 
           <Text className={styles.formLabel}>
@@ -225,7 +318,6 @@ const FeedbackPage: React.FC = () => {
         </View>
       </View>
 
-      {/* 历史记录 */}
       <View className={styles.historySection}>
         <View className={styles.historyHeader}>
           <Text className={styles.historyTitle}>反馈记录</Text>
@@ -237,44 +329,71 @@ const FeedbackPage: React.FC = () => {
             <Text className={styles.emptyState}>暂无反馈记录</Text>
           </View>
         ) : (
-          sortedFeedbacks.map(fb => (
-            <View key={fb.id} className={styles.historyItem}>
-              <View className={styles.historyItemHeader}>
-                <View className={styles.historyType}>
-                  <Text className={styles.historyTypeIcon}>
-                    {typeMeta[fb.type]?.historyIcon || '📋'}
-                  </Text>
-                  <Text className={styles.historyTypeText}>
-                    {typeMeta[fb.type]?.text || fb.type}
-                  </Text>
+          sortedFeedbacks.map(fb => {
+            const linkedAlert = fb.alertId ? tempAlerts.find(a => a.id === fb.alertId) : null;
+            return (
+              <View key={fb.id} className={styles.historyItem}>
+                <View className={styles.historyItemHeader}>
+                  <View className={styles.historyType}>
+                    <Text className={styles.historyTypeIcon}>
+                      {typeMeta[fb.type]?.historyIcon || '📋'}
+                    </Text>
+                    <Text className={styles.historyTypeText}>
+                      {typeMeta[fb.type]?.text || fb.type}
+                    </Text>
+                  </View>
+                  <View className={classnames(styles.historyStatus, statusMeta[fb.status].class)}>
+                    {statusMeta[fb.status].text}
+                  </View>
                 </View>
-                <View className={classnames(styles.historyStatus, statusMeta[fb.status].class)}>
-                  {statusMeta[fb.status].text}
-                </View>
+                <Text className={styles.historyTime}>{fb.createTime}</Text>
+                {linkedAlert && (
+                  <View className={styles.linkedAlert}>
+                    <Text className={styles.linkedAlertIcon}>
+                      {linkedAlert.severity === 'danger' ? '🔴' : '🟠'}
+                    </Text>
+                    <Text className={styles.linkedAlertText}>
+                      关联预警：{linkedAlert.currentTemp.toFixed(1)}℃ {linkedAlert.time}
+                    </Text>
+                  </View>
+                )}
+                {fb.checkItems && fb.checkItems.length > 0 && (
+                  <View className={styles.checkResultRow}>
+                    {fb.checkItems.map(ci => (
+                      <View
+                        key={ci.key}
+                        className={classnames(
+                          styles.checkResultTag,
+                          ci.status === 'normal' ? styles.checkResultNormal : styles.checkResultAbnormal
+                        )}
+                      >
+                        {ci.status === 'normal' ? '✅' : '❌'} {ci.label}:{ci.status === 'normal' ? '正常' : '异常'}
+                      </View>
+                    ))}
+                  </View>
+                )}
+                <Text className={styles.historyContent}>{fb.content}</Text>
+                {fb.photos && fb.photos.length > 0 && (
+                  <View className={styles.historyPhotos}>
+                    {fb.photos.map((p, i) => (
+                      <Image key={i} className={styles.historyPhoto} src={p} mode="aspectFill" />
+                    ))}
+                  </View>
+                )}
+                {fb.reply && (
+                  <View className={styles.historyReply}>
+                    <Text className={styles.historyReplyText}>{fb.reply}</Text>
+                    {fb.replyTime && (
+                      <Text className={styles.historyReplyTime}>{fb.replyTime}</Text>
+                    )}
+                  </View>
+                )}
               </View>
-              <Text className={styles.historyTime}>{fb.createTime}</Text>
-              <Text className={styles.historyContent}>{fb.content}</Text>
-              {fb.photos && fb.photos.length > 0 && (
-                <View className={styles.historyPhotos}>
-                  {fb.photos.map((p, i) => (
-                    <Image key={i} className={styles.historyPhoto} src={p} mode="aspectFill" />
-                  ))}
-                </View>
-              )}
-              {fb.reply && (
-                <View className={styles.historyReply}>
-                  <Text className={styles.historyReplyText}>{fb.reply}</Text>
-                  {fb.replyTime && (
-                    <Text className={styles.historyReplyTime}>{fb.replyTime}</Text>
-                  )}
-                </View>
-              )}
-            </View>
-          ))
+            );
+          })
         )}
       </View>
 
-      {/* 底部提交栏 */}
       <View className={styles.submitBar}>
         <Button
           className={classnames(styles.submitBtn, styles.submitBtnSecondary)}

@@ -38,6 +38,15 @@ export interface RiskPoint {
   severity: 'low' | 'medium' | 'high';
 }
 
+export type CheckItemKey = 'door_seal' | 'refrigeration' | 'fuel';
+
+export interface CheckItemOption {
+  key: CheckItemKey;
+  label: string;
+  normalLabel: string;
+  abnormalLabel: string;
+}
+
 export interface TempAlert {
   id: string;
   time: string;
@@ -49,6 +58,8 @@ export interface TempAlert {
   suggestions: string[];
   severity: 'warning' | 'danger';
   handled: boolean;
+  voiced: boolean;
+  resolved: boolean;
 }
 
 export interface TempRecord {
@@ -62,11 +73,18 @@ export interface FeedbackItem {
   alertId?: string;
   type: 'checked' | 'need_help' | 'photo';
   content: string;
+  checkItems?: CheckItemResult[];
   photos?: string[];
   createTime: string;
   status: 'sent' | 'received' | 'replied';
   reply?: string;
   replyTime?: string;
+}
+
+export interface CheckItemResult {
+  key: CheckItemKey;
+  label: string;
+  status: 'normal' | 'abnormal';
 }
 
 export interface DriverInfo {

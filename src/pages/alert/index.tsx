@@ -11,7 +11,12 @@ const AlertPage: React.FC = () => {
   const { task, tempAlerts, tempRecords, voiceEnabled, handleAlert, toggleVoice } = useAppStore();
 
   const unhandledCount = useMemo(
-    () => tempAlerts.filter(a => !a.handled).length,
+    () => tempAlerts.filter(a => !a.handled && !a.resolved).length,
+    [tempAlerts]
+  );
+
+  const resolvedCount = useMemo(
+    () => tempAlerts.filter(a => a.resolved).length,
     [tempAlerts]
   );
 
@@ -51,7 +56,6 @@ const AlertPage: React.FC = () => {
     if (next) {
       speakIfEnabled(true, '语音提醒已开启，温度异常时我会及时提醒您');
     }
-    console.log('[AlertPage] handleToggleVoice:', next);
   }, [voiceEnabled, toggleVoice]);
 
   const handlePlayAlert = useCallback((alert) => {
@@ -73,10 +77,7 @@ const AlertPage: React.FC = () => {
   }, [handleAlert, voiceEnabled]);
 
   const handleGoFeedback = useCallback((alertId) => {
-    Taro.switchTab({ url: '/pages/feedback/index' }).catch(err => {
-      console.error('[AlertPage] handleGoFeedback error:', err);
-      Taro.showToast({ title: '请前往一键反馈页面', icon: 'none' });
-    });
+    Taro.switchTab({ url: '/pages/feedback/index' });
   }, []);
 
   if (!task) {
@@ -91,7 +92,6 @@ const AlertPage: React.FC = () => {
 
   return (
     <ScrollView scrollY className={styles.page} refresherEnabled>
-      {/* 顶部汇总卡片 */}
       <View className={styles.headerCard}>
         <View className={styles.headerTop}>
           <Text className={styles.headerTitle}>温度监控总览</Text>
@@ -110,10 +110,10 @@ const AlertPage: React.FC = () => {
           </View>
           <View className={styles.summaryItem}>
             <View className={styles.summaryValueWrap}>
-              <Text className={styles.summaryValue}>{tempAlerts.length}</Text>
+              <Text className={styles.summaryValue}>{resolvedCount}</Text>
               <Text className={styles.summaryUnit}>条</Text>
             </View>
-            <Text className={styles.summaryLabel}>今日预警总数</Text>
+            <Text className={styles.summaryLabel}>已缓解</Text>
           </View>
           <View className={styles.summaryItem}>
             <View className={styles.summaryValueWrap}>
@@ -125,14 +125,12 @@ const AlertPage: React.FC = () => {
       </View>
 
       <View className={styles.content}>
-        {/* 当前温度大卡片 */}
         <TempCard
           currentTemp={task.currentTemp}
           tempMin={task.tempMin}
           tempMax={task.tempMax}
         />
 
-        {/* 温度趋势图 */}
         <View className={styles.trendCard}>
           <View className={styles.cardHeader}>
             <Text className={styles.cardTitle}>温度趋势</Text>
@@ -188,7 +186,6 @@ const AlertPage: React.FC = () => {
           </View>
         </View>
 
-        {/* 预警列表 */}
         <View className={styles.sectionHeader}>
           <Text className={styles.sectionTitle}>温度预警记录</Text>
           {unhandledCount > 0 && (
@@ -207,26 +204,25 @@ const AlertPage: React.FC = () => {
               className={classnames(
                 styles.alertItem,
                 alert.handled && styles.alertItemHandled,
-                alert.severity === 'danger' && styles.alertItemDanger
+                alert.severity === 'danger' && !alert.resolved && styles.alertItemDanger,
+                alert.resolved && styles.alertItemResolved
               )}
             >
               <View className={styles.alertHeader}>
                 <View
                   className={classnames(
                     styles.alertSeverity,
-                    alert.severity === 'warning' && styles.severityWarning,
-                    alert.severity === 'danger' && styles.severityDanger
+                    alert.resolved && styles.severityResolved,
+                    !alert.resolved && alert.severity === 'warning' && styles.severityWarning,
+                    !alert.resolved && alert.severity === 'danger' && styles.severityDanger
                   )}
                 >
                   <View className={styles.severityIcon} />
                   <Text className={styles.severityText}>
-                    {alert.severity === 'warning' ? '温度预警' : '温度超限'}
+                    {alert.resolved ? '已缓解' : alert.severity === 'warning' ? '温度预警' : '温度超限'}
                   </Text>
                 </View>
                 <Text className={styles.alertTime}>{alert.time}</Text>
-                {alert.handled && (
-                  <View className={styles.alertStatus}>已处理</View>
-                )}
               </View>
 
               <View className={styles.alertTemp} onClick={() => handlePlayAlert(alert)}>
@@ -245,17 +241,44 @@ const AlertPage: React.FC = () => {
                 </Text>
               </View>
 
-              <Text className={styles.suggestionsTitle}>检查建议：</Text>
-              <View className={styles.suggestionsList}>
-                {alert.suggestions.map((s, idx) => (
-                  <View key={idx} className={styles.suggestionItem}>
-                    <View className={styles.suggestionNum}>{idx + 1}</View>
-                    <Text className={styles.suggestionText}>{s}</Text>
+              <View className={styles.alertStatusRow}>
+                {alert.voiced && (
+                  <View className={classnames(styles.statusChip, styles.chipVoiced)}>
+                    🔊 已播报
                   </View>
-                ))}
+                )}
+                {alert.handled && (
+                  <View className={classnames(styles.statusChip, styles.chipHandled)}>
+                    ✅ 已处理
+                  </View>
+                )}
+                {alert.resolved && (
+                  <View className={classnames(styles.statusChip, styles.chipResolved)}>
+                    🟢 温度已恢复
+                  </View>
+                )}
+                {!alert.handled && !alert.resolved && (
+                  <View className={classnames(styles.statusChip, styles.chipPending)}>
+                    ⏳ 待处理
+                  </View>
+                )}
               </View>
 
-              {!alert.handled && (
+              {!alert.resolved && (
+                <>
+                  <Text className={styles.suggestionsTitle}>检查建议：</Text>
+                  <View className={styles.suggestionsList}>
+                    {alert.suggestions.map((s, idx) => (
+                      <View key={idx} className={styles.suggestionItem}>
+                        <View className={styles.suggestionNum}>{idx + 1}</View>
+                        <Text className={styles.suggestionText}>{s}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </>
+              )}
+
+              {!alert.handled && !alert.resolved && (
                 <View className={styles.alertActions}>
                   <Button
                     className={`${styles.actionBtn} ${styles.actionChecked}`}

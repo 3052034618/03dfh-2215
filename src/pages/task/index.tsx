@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, Input, Button, ScrollView } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import { useAppStore } from '@/store';
@@ -8,8 +8,8 @@ import TaskInfoCard from '@/components/TaskInfoCard';
 import GoodsSelector from '@/components/GoodsSelector';
 import { GOODS_TYPE_OPTIONS } from '@/data/mock';
 import { scanWaybill, fetchCurrentTemp, fetchWaybillDetail } from '@/services';
-import { GoodsType } from '@/types';
-import { speakIfEnabled } from '@/utils';
+import { GoodsType, Task } from '@/types';
+import { speakIfEnabled, getTempStatus } from '@/utils';
 import styles from './index.module.scss';
 
 const TaskPage: React.FC = () => {
@@ -20,7 +20,8 @@ const TaskPage: React.FC = () => {
     voiceEnabled,
     createTask,
     startTask,
-    updateCurrentTemp
+    updateCurrentTemp,
+    tempAlerts
   } = useAppStore();
 
   const [waybillNo, setWaybillNo] = useState('');
@@ -28,6 +29,8 @@ const TaskPage: React.FC = () => {
   const [tempMin, setTempMin] = useState(2);
   const [tempMax, setTempMax] = useState(8);
   const [loading, setLoading] = useState(false);
+  const [taskDetail, setTaskDetail] = useState<Partial<Task> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const handleScan = useCallback(async () => {
     try {
@@ -36,10 +39,10 @@ const TaskPage: React.FC = () => {
       if (result && result.length >= 6) {
         const detail = await fetchWaybillDetail(result);
         if (detail) {
+          setTaskDetail(detail);
           Taro.showToast({ title: '运单信息已获取', icon: 'success' });
         }
       }
-      console.log('[TaskPage] handleScan success');
     } catch (e) {
       console.error('[TaskPage] handleScan error:', e);
       Taro.showToast({ title: '扫码已取消', icon: 'none' });
@@ -50,7 +53,6 @@ const TaskPage: React.FC = () => {
     setSelectedGoods(value);
     setTempMin(min);
     setTempMax(max);
-    console.log('[TaskPage] handleGoodsChange:', value, min, max);
   }, []);
 
   const handleCreateTask = useCallback(() => {
@@ -62,10 +64,9 @@ const TaskPage: React.FC = () => {
       Taro.showToast({ title: '请选择货品类型', icon: 'none' });
       return;
     }
-    createTask(waybillNo.trim(), selectedGoods, tempMin, tempMax);
-    Taro.showToast({ title: '任务已创建', icon: 'success' });
+    createTask(waybillNo.trim(), selectedGoods, tempMin, tempMax, taskDetail || undefined);
     speakIfEnabled(voiceEnabled, '任务已创建，请核对装货信息无误后点击开始运输');
-  }, [waybillNo, selectedGoods, tempMin, tempMax, createTask, voiceEnabled]);
+  }, [waybillNo, selectedGoods, tempMin, tempMax, createTask, voiceEnabled, taskDetail]);
 
   const handleStart = useCallback(() => {
     setLoading(true);
@@ -74,7 +75,6 @@ const TaskPage: React.FC = () => {
       setLoading(false);
       Taro.showToast({ title: '开始运输，祝您一路平安', icon: 'none' });
       speakIfEnabled(voiceEnabled, '已开始运输，系统将全程监控温度，请注意提醒');
-      console.log('[TaskPage] handleStart success');
     }, 500);
   }, [startTask, voiceEnabled]);
 
@@ -83,7 +83,14 @@ const TaskPage: React.FC = () => {
     try {
       const temp = await fetchCurrentTemp();
       updateCurrentTemp(temp);
-      Taro.showToast({ title: '温度已更新', icon: 'success' });
+      const status = getTempStatus(temp, task.tempMin, task.tempMax);
+      if (status === 'normal') {
+        Taro.showToast({ title: '温度正常', icon: 'success' });
+      } else if (status === 'warning') {
+        Taro.showToast({ title: '温度接近温区上限', icon: 'none' });
+      } else {
+        Taro.showToast({ title: '温度超限！', icon: 'error' });
+      }
     } catch (e) {
       console.error('[TaskPage] handleRefreshTemp error:', e);
     }
@@ -102,11 +109,29 @@ const TaskPage: React.FC = () => {
     };
   }, [handlePullDownRefresh]);
 
-  const noTask = !task || task.status === 'pending';
+  useEffect(() => {
+    if (task && task.status === 'in_transit') {
+      timerRef.current = setInterval(() => {
+        handleRefreshTemp();
+      }, 30000);
+      return () => {
+        if (timerRef.current) clearInterval(timerRef.current);
+      };
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+  }, [task?.status, handleRefreshTemp]);
+
+  const isFormStep = !task || task.status === 'loading';
+  const isConfirmStep = task && task.status === 'pending';
+  const isDriving = task && task.status === 'in_transit';
+  const activeAlerts = tempAlerts.filter(a => !a.handled && !a.resolved);
 
   return (
     <ScrollView scrollY className={styles.page} refresherEnabled onRefresherRefresh={handlePullDownRefresh}>
-      {/* 顶部问候 */}
       <View className={styles.greeting}>
         <Text className={styles.greetingText}>你好，{driver.name}</Text>
         <Text className={styles.vehicleInfo}>
@@ -114,12 +139,11 @@ const TaskPage: React.FC = () => {
         </Text>
       </View>
 
-      <View className={noTask ? styles.createTaskSection : styles.contentSection}>
-        {noTask ? (
-          /* 创建任务区域 */
+      <View className={styles.contentSection}>
+        {/* ===== 录入表单阶段 ===== */}
+        {isFormStep && (
           <>
             <Text className={styles.sectionTitle}>出车前录入</Text>
-
             <View className={styles.inputCard}>
               <Text className={styles.inputLabel}>运单号</Text>
               <View className={styles.inputRow}>
@@ -132,49 +156,60 @@ const TaskPage: React.FC = () => {
                 <Button className={styles.scanBtn} onClick={handleScan}>扫码</Button>
               </View>
             </View>
-
             <GoodsSelector
               options={GOODS_TYPE_OPTIONS}
               value={selectedGoods}
               onChange={handleGoodsChange}
             />
-
-            {selectedGoods && (
-              <TaskInfoCard
-                task={{
-                  id: 'preview',
-                  waybillNo: waybillNo || '待输入',
-                  goodsType: selectedGoods,
-                  goodsName: '',
-                  tempMin,
-                  tempMax,
-                  loadingAddr: '系统获取中...',
-                  unloadingAddr: '系统获取中...',
-                  recommendedRoute: '系统规划中...',
-                  estimatedDeparture: new Date().toLocaleString('zh-CN'),
-                  estimatedArrival: '计算中...',
-                  status: 'pending',
-                  currentTemp: (tempMin + tempMax) / 2,
-                  fuelLevel: 95,
-                  distance: 0,
-                  elapsedTime: '0小时0分'
-                }}
-                showDetails={false}
-              />
-            )}
-
             <Button
               className={styles.startBtn}
               onClick={handleCreateTask}
               disabled={!waybillNo.trim() || !selectedGoods}
             >
-              确认创建任务
+              确认运单信息
             </Button>
           </>
-        ) : (
-          /* 运输中显示 */
+        )}
+
+        {/* ===== 确认阶段：看到完整任务详情 ===== */}
+        {isConfirmStep && (
           <>
-            {/* 状态统计条 */}
+            <View className={styles.confirmBanner}>
+              <Text className={styles.confirmBannerIcon}>📋</Text>
+              <View className={styles.confirmBannerContent}>
+                <Text className={styles.confirmBannerTitle}>请确认本趟任务信息</Text>
+                <Text className={styles.confirmBannerHint}>核实无误后点击下方按钮开始运输</Text>
+              </View>
+            </View>
+            <TaskInfoCard task={task} showDetails />
+            <Button
+              className={styles.startBtn}
+              loading={loading}
+              onClick={handleStart}
+            >
+              ✅ 确认无误，开始运输
+            </Button>
+          </>
+        )}
+
+        {/* ===== 行驶中阶段 ===== */}
+        {isDriving && (
+          <>
+            {activeAlerts.length > 0 && (
+              <View className={styles.alertBanner} onClick={() => Taro.switchTab({ url: '/pages/alert/index' })}>
+                <Text className={styles.alertBannerIcon}>⚠️</Text>
+                <View className={styles.alertBannerContent}>
+                  <Text className={styles.alertBannerTitle}>
+                    {activeAlerts.length}条温度预警待处理
+                  </Text>
+                  <Text className={styles.alertBannerHint}>
+                    当前 {task.currentTemp.toFixed(1)}℃，点击查看详情
+                  </Text>
+                </View>
+                <Text className={styles.alertBannerArrow}>›</Text>
+              </View>
+            )}
+
             <View className={styles.statsBar}>
               <View className={styles.statItem}>
                 <View className={styles.statValueWrap}>
@@ -201,14 +236,12 @@ const TaskPage: React.FC = () => {
               </View>
             </View>
 
-            {/* 温度卡片 */}
             <TempCard
               currentTemp={task.currentTemp}
               tempMin={task.tempMin}
               tempMax={task.tempMax}
             />
 
-            {/* 风险点 */}
             <View className={styles.sectionHeader}>
               <Text className={styles.sectionTitleSm}>前方风险点</Text>
               {riskPoints.length > 0 && (
@@ -225,7 +258,6 @@ const TaskPage: React.FC = () => {
               </View>
             )}
 
-            {/* 任务详情 */}
             <View className={styles.sectionHeader}>
               <Text className={styles.sectionTitleSm}>本趟任务</Text>
             </View>
@@ -234,18 +266,16 @@ const TaskPage: React.FC = () => {
         )}
       </View>
 
-      {/* 运输中底部操作 */}
-      {task && task.status === 'in_transit' && (
+      {isDriving && (
         <View className={styles.quickActions}>
           <Button className={`${styles.actionBtn} ${styles.actionBtnSecondary}`} onClick={handleRefreshTemp}>
             刷新温度
           </Button>
           <Button
             className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
-            loading={loading}
-            onClick={handleStart}
+            onClick={() => Taro.switchTab({ url: '/pages/feedback/index' })}
           >
-            查看路线
+            一键反馈
           </Button>
         </View>
       )}

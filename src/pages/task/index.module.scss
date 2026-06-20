@@ -24,8 +24,7 @@
   color: $color-text-tertiary;
 }
 
-/* 无任务 - 创建任务表单 */
-.createTaskSection {
+.contentSection {
   padding: 0 $page-padding;
 }
 
@@ -113,9 +112,80 @@
   }
 }
 
-/* 有任务 - 运输中 */
-.contentSection {
-  padding: 0 $page-padding;
+.confirmBanner {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  background: $color-primary-bg;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-md;
+  border: 2rpx solid rgba(2, 132, 199, 0.2);
+}
+
+.confirmBannerIcon {
+  font-size: 48rpx;
+}
+
+.confirmBannerContent {
+  flex: 1;
+}
+
+.confirmBannerTitle {
+  display: block;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-primary-dark;
+  margin-bottom: 4rpx;
+}
+
+.confirmBannerHint {
+  display: block;
+  font-size: $font-size-sm;
+  color: $color-primary;
+}
+
+.alertBanner {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  background: $color-warning-bg;
+  border-radius: $radius-lg;
+  padding: $spacing-md $spacing-lg;
+  margin-bottom: $spacing-md;
+  border: 2rpx solid rgba(249, 115, 22, 0.3);
+
+  &:active {
+    opacity: 0.9;
+  }
+}
+
+.alertBannerIcon {
+  font-size: 40rpx;
+}
+
+.alertBannerContent {
+  flex: 1;
+}
+
+.alertBannerTitle {
+  display: block;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: #9a3412;
+  margin-bottom: 4rpx;
+}
+
+.alertBannerHint {
+  display: block;
+  font-size: $font-size-sm;
+  color: #c2410c;
+}
+
+.alertBannerArrow {
+  font-size: $font-size-xl;
+  color: #c2410c;
+  font-weight: $font-weight-bold;
 }
 
 .statsBar {

@@ -268,11 +268,15 @@
 
 .alertItemHandled {
   border-left-color: $color-success;
-  opacity: 0.7;
 }
 
 .alertItemDanger {
   border-left-color: $color-error;
+}
+
+.alertItemResolved {
+  border-left-color: $color-success;
+  opacity: 0.6;
 }
 
 .alertHeader {
@@ -306,6 +310,7 @@
 
 .severityWarning .severityIcon { background: $color-warning; }
 .severityDanger .severityIcon { background: $color-error; }
+.severityResolved .severityIcon { background: $color-success; }
 
 .severityText {
   font-size: $font-size-xs;
@@ -314,6 +319,8 @@
 
 .severityWarning .severityText { color: $color-warning; }
 .severityDanger .severityText { color: $color-error; }
+.severityResolved { background: $color-success-bg; }
+.severityResolved .severityText { color: $color-success; }
 
 .alertTime {
   font-size: $font-size-xs;
@@ -437,4 +444,43 @@
 .actionFeedback {
   background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
   color: $color-text-white;
+}
+
+.alertStatusRow {
+  display: flex;
+  gap: $spacing-xs;
+  flex-wrap: wrap;
+  padding: $spacing-sm 0;
+  border-bottom: 1rpx solid $color-divider;
+  margin-bottom: $spacing-sm;
+}
+
+.statusChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4rpx;
+  padding: 4rpx 12rpx;
+  border-radius: $radius-round;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+}
+
+.chipVoiced {
+  background: $color-info-bg;
+  color: $color-info;
+}
+
+.chipHandled {
+  background: $color-success-bg;
+  color: $color-success;
+}
+
+.chipResolved {
+  background: $color-success-bg;
+  color: $color-success;
+}
+
+.chipPending {
+  background: $color-warning-bg;
+  color: $color-warning;
 }

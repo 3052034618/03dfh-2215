@@ -97,7 +97,9 @@ export const MOCK_TEMP_ALERTS: TempAlert[] = [
       '确认冷凝器清洁，无遮挡物'
     ],
     severity: 'warning',
-    handled: false
+    handled: false,
+    voiced: true,
+    resolved: false
   },
   {
     id: 'ALERT002',
@@ -112,7 +114,9 @@ export const MOCK_TEMP_ALERTS: TempAlert[] = [
       '留意制冷机组是否频繁启停'
     ],
     severity: 'warning',
-    handled: true
+    handled: true,
+    voiced: true,
+    resolved: true
   },
   {
     id: 'ALERT003',
@@ -126,7 +130,9 @@ export const MOCK_TEMP_ALERTS: TempAlert[] = [
       '温度轻微上升，持续关注即可'
     ],
     severity: 'warning',
-    handled: true
+    handled: true,
+    voiced: true,
+    resolved: true
   }
 ];
 
@@ -157,6 +163,11 @@ export const MOCK_FEEDBACKS: FeedbackItem[] = [
     alertId: 'ALERT001',
     type: 'need_help',
     content: '车厢门封条有轻微磨损，制冷机组运行正常，建议到达后更换密封条',
+    checkItems: [
+      { key: 'door_seal', label: '门封', status: 'abnormal' },
+      { key: 'refrigeration', label: '制冷机', status: 'normal' },
+      { key: 'fuel', label: '油量', status: 'normal' }
+    ],
     createTime: '2026-06-21 14:38',
     status: 'replied',
     reply: '已收到，调度中心已协调上海仓库准备备用密封条，到达后优先更换。保持监控，有异常随时报告。',
@@ -168,6 +179,11 @@ export const MOCK_FEEDBACKS: FeedbackItem[] = [
     alertId: 'ALERT002',
     type: 'checked',
     content: '已检查门封、制冷机组及油量，一切正常',
+    checkItems: [
+      { key: 'door_seal', label: '门封', status: 'normal' },
+      { key: 'refrigeration', label: '制冷机', status: 'normal' },
+      { key: 'fuel', label: '油量', status: 'normal' }
+    ],
     createTime: '2026-06-21 12:18',
     status: 'received'
   },
@@ -177,6 +193,10 @@ export const MOCK_FEEDBACKS: FeedbackItem[] = [
     alertId: 'ALERT003',
     type: 'checked',
     content: '已确认各项指标正常',
+    checkItems: [
+      { key: 'door_seal', label: '门封', status: 'normal' },
+      { key: 'refrigeration', label: '制冷机', status: 'normal' }
+    ],
     createTime: '2026-06-21 10:22',
     status: 'received'
   }
