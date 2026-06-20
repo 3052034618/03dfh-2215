@@ -1,0 +1,188 @@
+@use '@/styles/variables.scss' as *;
+
+.taskCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  margin-bottom: $spacing-md;
+}
+
+.taskHeader {
+  padding-bottom: $spacing-md;
+  border-bottom: 2rpx solid $color-divider;
+}
+
+.waybillInfo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-md;
+}
+
+.waybillNo {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  font-weight: $font-weight-medium;
+}
+
+.statusBadge {
+  padding: $spacing-xs $spacing-sm;
+  border-radius: $radius-round;
+}
+
+.statusText {
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+}
+
+.goodsType {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+}
+
+.goodsIcon {
+  font-size: 48rpx;
+}
+
+.goodsName {
+  display: block;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: 4rpx;
+}
+
+.goodsDesc {
+  display: block;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.tempZone {
+  display: flex;
+  padding: $spacing-md 0;
+  border-bottom: 2rpx solid $color-divider;
+  gap: $spacing-lg;
+}
+
+.tempItem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.tempLabel {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.tempRange {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-primary;
+}
+
+.currentTemp {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+}
+
+.routeInfo {
+  padding: $spacing-md 0;
+  border-bottom: 2rpx solid $color-divider;
+}
+
+.routePoint {
+  display: flex;
+  align-items: flex-start;
+  gap: $spacing-md;
+}
+
+.pointDot {
+  width: 20rpx;
+  height: 20rpx;
+  border-radius: 50%;
+  margin-top: 8rpx;
+  flex-shrink: 0;
+}
+
+.pointLoading {
+  background: $color-success;
+}
+
+.pointUnloading {
+  background: $color-error;
+}
+
+.pointContent {
+  flex: 1;
+}
+
+.pointLabel {
+  display: block;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-bottom: 4rpx;
+}
+
+.pointAddr {
+  display: block;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+  line-height: 1.4;
+}
+
+.routeLine {
+  width: 2rpx;
+  height: 32rpx;
+  background: $color-border;
+  margin-left: 9rpx;
+}
+
+.routeDetail {
+  padding: $spacing-md 0;
+  border-bottom: 2rpx solid $color-divider;
+}
+
+.routeLabel {
+  display: block;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-bottom: $spacing-xs;
+}
+
+.routeText {
+  display: block;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  line-height: 1.5;
+}
+
+.timeInfo {
+  display: flex;
+  padding-top: $spacing-md;
+  gap: $spacing-lg;
+}
+
+.timeItem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.timeLabel {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.timeValue {
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+}

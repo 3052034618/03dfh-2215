@@ -1,0 +1,440 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  padding: $spacing-md 0;
+}
+
+.headerCard {
+  margin: 0 $page-padding $spacing-md;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  border-radius: $radius-xl;
+  padding: $spacing-xl;
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: -80rpx;
+    right: -80rpx;
+    width: 240rpx;
+    height: 240rpx;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+  }
+}
+
+.headerTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-lg;
+  position: relative;
+  z-index: 1;
+}
+
+.headerTitle {
+  font-size: $font-size-lg;
+  color: $color-text-white;
+  font-weight: $font-weight-semibold;
+}
+
+.voiceToggle {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  padding: $spacing-xs $spacing-md;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: $radius-round;
+
+  &:active {
+    opacity: 0.8;
+  }
+}
+
+.voiceIcon {
+  font-size: 28rpx;
+}
+
+.voiceText {
+  font-size: $font-size-xs;
+  color: $color-text-white;
+  font-weight: $font-weight-medium;
+}
+
+.summaryRow {
+  display: flex;
+  gap: $spacing-md;
+  position: relative;
+  z-index: 1;
+}
+
+.summaryItem {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: $radius-md;
+  padding: $spacing-md;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.summaryValue {
+  font-size: 48rpx;
+  color: $color-text-white;
+  font-weight: $font-weight-bold;
+}
+
+.summaryUnit {
+  font-size: $font-size-sm;
+  color: rgba(255, 255, 255, 0.8);
+  margin-left: 4rpx;
+}
+
+.summaryLabel {
+  font-size: $font-size-xs;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.summaryValueWrap {
+  display: flex;
+  align-items: baseline;
+}
+
+.content {
+  padding: 0 $page-padding;
+}
+
+/* 温度趋势图 */
+.trendCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  margin-bottom: $spacing-md;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-md;
+}
+
+.cardTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.cardSubtitle {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.chartArea {
+  position: relative;
+  height: 320rpx;
+  padding: 0 $spacing-sm;
+}
+
+.chartGrid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 32rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.gridLine {
+  height: 1rpx;
+  background: $color-divider;
+}
+
+.chartBars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  height: calc(100% - 32rpx);
+  gap: 4rpx;
+  padding-bottom: 32rpx;
+  position: relative;
+}
+
+.barItem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  gap: 8rpx;
+}
+
+.bar {
+  width: 100%;
+  max-width: 28rpx;
+  border-radius: 4rpx 4rpx 0 0;
+  background: linear-gradient(180deg, $color-success 0%, rgba(34, 197, 94, 0.6) 100%);
+  min-height: 8rpx;
+  transition: all $transition-base;
+}
+
+.barWarn {
+  background: linear-gradient(180deg, $color-warning 0%, rgba(249, 115, 22, 0.6) 100%);
+}
+
+.barDanger {
+  background: linear-gradient(180deg, $color-error 0%, rgba(239, 68, 68, 0.6) 100%);
+}
+
+.barTime {
+  font-size: 18rpx;
+  color: $color-text-tertiary;
+  white-space: nowrap;
+}
+
+.rangeLines {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: calc(100% - 32rpx);
+  pointer-events: none;
+}
+
+.rangeMin,
+.rangeMax {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2rpx;
+  border-top: 2rpx dashed $color-primary;
+}
+
+.rangeMinLabel,
+.rangeMaxLabel {
+  position: absolute;
+  right: -4rpx;
+  top: -16rpx;
+  font-size: 18rpx;
+  color: $color-primary;
+  background: $color-primary-bg;
+  padding: 2rpx 8rpx;
+  border-radius: $radius-xs;
+  transform: translateY(-50%);
+}
+
+/* 预警列表 */
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: $spacing-lg 0 $spacing-md;
+}
+
+.sectionTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.badge {
+  min-width: 40rpx;
+  height: 40rpx;
+  padding: 0 12rpx;
+  background: $color-error-bg;
+  color: $color-error;
+  border-radius: $radius-round;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.alertItem {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  margin-bottom: $spacing-md;
+  border-left: 6rpx solid $color-warning;
+}
+
+.alertItemHandled {
+  border-left-color: $color-success;
+  opacity: 0.7;
+}
+
+.alertItemDanger {
+  border-left-color: $color-error;
+}
+
+.alertHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-sm;
+}
+
+.alertSeverity {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  padding: $spacing-xs $spacing-sm;
+  border-radius: $radius-sm;
+}
+
+.severityWarning {
+  background: $color-warning-bg;
+}
+
+.severityDanger {
+  background: $color-error-bg;
+}
+
+.severityIcon {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+}
+
+.severityWarning .severityIcon { background: $color-warning; }
+.severityDanger .severityIcon { background: $color-error; }
+
+.severityText {
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+}
+
+.severityWarning .severityText { color: $color-warning; }
+.severityDanger .severityText { color: $color-error; }
+
+.alertTime {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.alertStatus {
+  font-size: $font-size-xs;
+  padding: 4rpx 12rpx;
+  border-radius: $radius-round;
+  background: $color-success-bg;
+  color: $color-success;
+  font-weight: $font-weight-medium;
+}
+
+.alertTemp {
+  display: flex;
+  align-items: baseline;
+  gap: $spacing-sm;
+  padding: $spacing-sm 0;
+  margin-bottom: $spacing-sm;
+  border-top: 1rpx solid $color-divider;
+  border-bottom: 1rpx solid $color-divider;
+}
+
+.alertTempValue {
+  font-size: 44rpx;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+}
+
+.alertDrift {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+}
+
+.driftUp { color: $color-warning; }
+.driftDown { color: $color-primary; }
+
+.alertTempTarget {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  margin-left: auto;
+}
+
+.suggestionsTitle {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-sm;
+}
+
+.suggestionsList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+}
+
+.suggestionItem {
+  display: flex;
+  align-items: flex-start;
+  gap: $spacing-sm;
+  padding: $spacing-sm $spacing-md;
+  background: $color-bg-hover;
+  border-radius: $radius-md;
+}
+
+.suggestionNum {
+  flex-shrink: 0;
+  width: 32rpx;
+  height: 32rpx;
+  background: $color-primary-bg;
+  color: $color-primary;
+  border-radius: $radius-sm;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.suggestionText {
+  flex: 1;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: 1.5;
+}
+
+.alertActions {
+  display: flex;
+  gap: $spacing-sm;
+  margin-top: $spacing-md;
+  padding-top: $spacing-md;
+  border-top: 2rpx solid $color-divider;
+}
+
+.actionBtn {
+  @include button-reset;
+  flex: 1;
+  height: $button-height-md;
+  border-radius: $radius-button;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+}
+
+.actionChecked {
+  background: $color-success-bg;
+  color: $color-success;
+}
+
+.actionHelp {
+  background: $color-warning-bg;
+  color: $color-warning;
+}
+
+.actionFeedback {
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  color: $color-text-white;
+}

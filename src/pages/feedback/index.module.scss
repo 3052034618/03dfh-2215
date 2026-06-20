@@ -1,0 +1,425 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  padding: $spacing-md 0;
+  padding-bottom: calc(280rpx + env(safe-area-inset-bottom));
+}
+
+/* 快速操作区 */
+.quickActions {
+  margin: 0 $page-padding $spacing-md;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  border-radius: $radius-xl;
+  padding: $spacing-xl;
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: -100rpx;
+    right: -60rpx;
+    width: 280rpx;
+    height: 280rpx;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+  }
+}
+
+.qaTitle {
+  font-size: $font-size-lg;
+  color: $color-text-white;
+  font-weight: $font-weight-semibold;
+  margin-bottom: $spacing-md;
+  position: relative;
+  z-index: 1;
+}
+
+.qaButtons {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+  position: relative;
+  z-index: 1;
+}
+
+.qaRow {
+  display: flex;
+  gap: $spacing-md;
+}
+
+.qaBtn {
+  @include button-reset;
+  flex: 1;
+  height: 140rpx;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: $radius-lg;
+  flex-direction: column;
+  gap: 8rpx;
+  backdrop-filter: blur(10rpx);
+  border: 2rpx solid rgba(255, 255, 255, 0.2);
+
+  &:active {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(0.98);
+  }
+}
+
+.qaBtnIcon {
+  font-size: 48rpx;
+}
+
+.qaBtnText {
+  font-size: $font-size-md;
+  color: $color-text-white;
+  font-weight: $font-weight-semibold;
+}
+
+.qaBtnHint {
+  font-size: $font-size-xs;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* 反馈表单区 */
+.formSection {
+  padding: 0 $page-padding;
+}
+
+.formCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  margin-bottom: $spacing-md;
+}
+
+.formHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-md;
+  padding-bottom: $spacing-md;
+  border-bottom: 2rpx solid $color-divider;
+}
+
+.formTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.formTypeTag {
+  font-size: $font-size-xs;
+  padding: 4rpx 16rpx;
+  border-radius: $radius-round;
+  font-weight: $font-weight-medium;
+}
+
+.tagChecked {
+  background: $color-success-bg;
+  color: $color-success;
+}
+
+.tagHelp {
+  background: $color-warning-bg;
+  color: $color-warning;
+}
+
+.tagPhoto {
+  background: $color-primary-bg;
+  color: $color-primary;
+}
+
+.formLabel {
+  display: block;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+  margin-bottom: $spacing-sm;
+  margin-top: $spacing-md;
+
+  &:first-child {
+    margin-top: 0;
+  }
+}
+
+.formRequired {
+  color: $color-error;
+  margin-right: 4rpx;
+}
+
+.textareaField {
+  width: 100%;
+  min-height: 180rpx;
+  padding: $spacing-md;
+  background: $color-bg-hover;
+  border-radius: $radius-md;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  line-height: 1.5;
+  border: 2rpx solid transparent;
+  box-sizing: border-box;
+
+  &:focus {
+    border-color: $color-primary;
+    background: $color-bg-card;
+  }
+}
+
+.photoSection {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+  margin-top: $spacing-sm;
+}
+
+.photoItem {
+  width: 200rpx;
+  height: 200rpx;
+  border-radius: $radius-md;
+  overflow: hidden;
+  position: relative;
+  background: $color-bg-hover;
+}
+
+.photoImg {
+  width: 100%;
+  height: 100%;
+}
+
+.photoRemove {
+  position: absolute;
+  top: 8rpx;
+  right: 8rpx;
+  width: 40rpx;
+  height: 40rpx;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-bold;
+}
+
+.photoAdd {
+  width: 200rpx;
+  height: 200rpx;
+  border-radius: $radius-md;
+  background: $color-bg-hover;
+  border: 2rpx dashed $color-border;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-xs;
+
+  &:active {
+    background: $color-border;
+  }
+}
+
+.photoAddIcon {
+  font-size: 48rpx;
+  color: $color-text-tertiary;
+}
+
+.photoAddText {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+/* 提交按钮区 */
+.submitBar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: $color-bg-card;
+  padding: $spacing-md $page-padding;
+  padding-bottom: calc($spacing-md + env(safe-area-inset-bottom));
+  box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.08);
+  z-index: 100;
+  display: flex;
+  gap: $spacing-md;
+}
+
+.submitBtn {
+  @include button-reset;
+  flex: 1;
+  height: $button-height-lg;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  border-radius: $radius-button;
+  color: $color-text-white;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+}
+
+.submitBtnSecondary {
+  background: $color-bg-card;
+  color: $color-text-secondary;
+  border: 2rpx solid $color-border;
+  flex: 0 0 200rpx;
+}
+
+/* 历史记录 */
+.historySection {
+  padding: 0 $page-padding;
+}
+
+.historyHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: $spacing-lg 0 $spacing-md;
+}
+
+.historyTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.historyCount {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.historyItem {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  margin-bottom: $spacing-md;
+}
+
+.historyItemHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: $spacing-sm;
+}
+
+.historyType {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+}
+
+.historyTypeIcon {
+  font-size: 32rpx;
+}
+
+.historyTypeText {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.historyStatus {
+  font-size: $font-size-xs;
+  padding: 4rpx 16rpx;
+  border-radius: $radius-round;
+  font-weight: $font-weight-medium;
+}
+
+.statusSent {
+  background: $color-info-bg;
+  color: $color-info;
+}
+
+.statusReceived {
+  background: $color-success-bg;
+  color: $color-success;
+}
+
+.statusReplied {
+  background: $color-primary-bg;
+  color: $color-primary;
+}
+
+.historyTime {
+  display: block;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-bottom: $spacing-sm;
+}
+
+.historyContent {
+  display: block;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: 1.6;
+  padding: $spacing-sm 0;
+  border-top: 1rpx solid $color-divider;
+  border-bottom: 1rpx solid $color-divider;
+  margin-bottom: $spacing-sm;
+}
+
+.historyPhotos {
+  display: flex;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-sm;
+  flex-wrap: wrap;
+}
+
+.historyPhoto {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: $radius-sm;
+  background: $color-bg-hover;
+}
+
+.historyReply {
+  background: $color-primary-bg;
+  border-radius: $radius-md;
+  padding: $spacing-md;
+  position: relative;
+}
+
+.historyReply::before {
+  content: '调度回复';
+  position: absolute;
+  top: -16rpx;
+  left: $spacing-md;
+  font-size: $font-size-xs;
+  padding: 2rpx 12rpx;
+  background: $color-primary;
+  color: $color-text-white;
+  border-radius: $radius-xs;
+  font-weight: $font-weight-medium;
+}
+
+.historyReplyTime {
+  display: block;
+  font-size: $font-size-xs;
+  color: $color-primary;
+  margin-top: $spacing-xs;
+  text-align: right;
+}
+
+.historyReplyText {
+  display: block;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  line-height: 1.6;
+}
+
+.emptyState {
+  text-align: center;
+  padding: $spacing-xl;
+  color: $color-text-tertiary;
+  font-size: $font-size-sm;
+}

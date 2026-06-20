@@ -1,0 +1,80 @@
+@use '@/styles/variables.scss' as *;
+
+.selector {
+  margin-bottom: $spacing-md;
+}
+
+.selectorTitle {
+  display: block;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-md;
+}
+
+.optionsGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+}
+
+.optionItem {
+  width: calc(50% - 8rpx);
+  background: $color-bg-card;
+  border-radius: $radius-md;
+  padding: $spacing-md;
+  border: 3rpx solid $color-border;
+  transition: all $transition-base;
+  box-sizing: border-box;
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.selected {
+  border-color: $color-primary;
+  background: $color-primary-bg;
+  box-shadow: 0 4rpx 16rpx rgba(2, 132, 199, 0.15);
+}
+
+.optionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8rpx;
+}
+
+.optionLabel {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.checkMark {
+  width: 36rpx;
+  height: 36rpx;
+  background: $color-primary;
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22rpx;
+  font-weight: $font-weight-bold;
+}
+
+.optionTemp {
+  display: block;
+  font-size: $font-size-sm;
+  color: $color-primary;
+  font-weight: $font-weight-medium;
+  margin-bottom: 8rpx;
+}
+
+.optionDesc {
+  display: block;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  line-height: 1.4;
+}

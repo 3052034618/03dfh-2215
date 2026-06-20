@@ -1,0 +1,110 @@
+@use '@/styles/variables.scss' as *;
+
+.riskCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  margin-bottom: $spacing-md;
+  position: relative;
+}
+
+.isFirst {
+  border-left: 8rpx solid $color-warning;
+}
+
+.riskHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-sm;
+}
+
+.typeBadge {
+  padding: $spacing-xs $spacing-sm;
+  border-radius: $radius-sm;
+}
+
+.typeText {
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+}
+
+.distanceInfo {
+  display: flex;
+  align-items: baseline;
+  gap: 4rpx;
+}
+
+.distanceValue {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+}
+
+.distanceUnit {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.riskTitle {
+  display: block;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-xs;
+}
+
+.riskDesc {
+  display: block;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: 1.5;
+  margin-bottom: $spacing-md;
+}
+
+.riskFooter {
+  display: flex;
+  align-items: center;
+  padding: $spacing-md;
+  background: $color-bg-hover;
+  border-radius: $radius-md;
+}
+
+.riskStat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+}
+
+.statLabel {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.statValue {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.divider {
+  width: 2rpx;
+  height: 56rpx;
+  background: $color-border;
+  margin: 0 $spacing-sm;
+}
+
+.alertBanner {
+  margin-top: $spacing-md;
+  padding: $spacing-sm $spacing-md;
+  border-radius: $radius-sm;
+  text-align: center;
+}
+
+.alertText {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+}
