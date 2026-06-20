@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, Input, Button, ScrollView } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import { useAppStore } from '@/store';
@@ -6,10 +6,11 @@ import TempCard from '@/components/TempCard';
 import RiskCard from '@/components/RiskCard';
 import TaskInfoCard from '@/components/TaskInfoCard';
 import GoodsSelector from '@/components/GoodsSelector';
-import { GOODS_TYPE_OPTIONS } from '@/data/mock';
+import { GOODS_TYPE_OPTIONS, MOCK_RISK_POINTS } from '@/data/mock';
 import { scanWaybill, fetchCurrentTemp, fetchWaybillDetail } from '@/services';
-import { GoodsType, Task } from '@/types';
-import { speakIfEnabled, getTempStatus } from '@/utils';
+import { GoodsType, Task, TempRecord } from '@/types';
+import { speakIfEnabled, getTempStatus, formatTemp } from '@/utils';
+import classnames from 'classnames';
 import styles from './index.module.scss';
 
 const TaskPage: React.FC = () => {
@@ -20,8 +21,12 @@ const TaskPage: React.FC = () => {
     voiceEnabled,
     createTask,
     startTask,
+    completeTask,
+    resetTask,
     updateCurrentTemp,
-    tempAlerts
+    tempAlerts,
+    tempRecords,
+    feedbacks
   } = useAppStore();
 
   const [waybillNo, setWaybillNo] = useState('');
@@ -29,6 +34,7 @@ const TaskPage: React.FC = () => {
   const [tempMin, setTempMin] = useState(2);
   const [tempMax, setTempMax] = useState(8);
   const [loading, setLoading] = useState(false);
+  const [completing, setCompleting] = useState(false);
   const [taskDetail, setTaskDetail] = useState<Partial<Task> | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -65,7 +71,10 @@ const TaskPage: React.FC = () => {
       return;
     }
     createTask(waybillNo.trim(), selectedGoods, tempMin, tempMax, taskDetail || undefined);
-    speakIfEnabled(voiceEnabled, '任务已创建，请核对装货信息无误后点击开始运输');
+    speakIfEnabled(voiceEnabled, '运单信息已创建，请确认装货地卸货地路线和温区，无误后点击开始运输');
+    setTimeout(() => {
+      Taro.pageScrollTo?.({ scrollTop: 0, duration: 200 });
+    }, 50);
   }, [waybillNo, selectedGoods, tempMin, tempMax, createTask, voiceEnabled, taskDetail]);
 
   const handleStart = useCallback(() => {
@@ -81,13 +90,13 @@ const TaskPage: React.FC = () => {
   const handleRefreshTemp = useCallback(async () => {
     if (!task) return;
     try {
-      const temp = await fetchCurrentTemp();
+      const temp = await fetchCurrentTemp(task.goodsType, task.tempMin, task.tempMax);
       updateCurrentTemp(temp);
       const status = getTempStatus(temp, task.tempMin, task.tempMax);
       if (status === 'normal') {
         Taro.showToast({ title: '温度正常', icon: 'success' });
       } else if (status === 'warning') {
-        Taro.showToast({ title: '温度接近温区上限', icon: 'none' });
+        Taro.showToast({ title: '温度接近温区边界', icon: 'none' });
       } else {
         Taro.showToast({ title: '温度超限！', icon: 'error' });
       }
@@ -113,7 +122,7 @@ const TaskPage: React.FC = () => {
     if (task && task.status === 'in_transit') {
       timerRef.current = setInterval(() => {
         handleRefreshTemp();
-      }, 30000);
+      }, 25000);
       return () => {
         if (timerRef.current) clearInterval(timerRef.current);
       };
@@ -125,10 +134,65 @@ const TaskPage: React.FC = () => {
     }
   }, [task?.status, handleRefreshTemp]);
 
-  const isFormStep = !task || task.status === 'loading';
+  const handleCompleteDelivery = useCallback(() => {
+    setCompleting(true);
+    setTimeout(() => {
+      completeTask();
+      setCompleting(false);
+      speakIfEnabled(voiceEnabled, '恭喜，本趟运输已确认完成，请查看交付摘要');
+    }, 800);
+  }, [completeTask, voiceEnabled]);
+
+  const handleNewOrder = useCallback(() => {
+    Taro.showModal({
+      title: '新建下一单',
+      content: '确认开始新一单的录入吗？',
+      success: (res) => {
+        if (res.confirm) {
+          resetTask();
+          setWaybillNo('');
+          setSelectedGoods(undefined);
+          setTempMin(2);
+          setTempMax(8);
+          setTaskDetail(null);
+          Taro.pageScrollTo?.({ scrollTop: 0, duration: 200 });
+        }
+      }
+    });
+  }, [resetTask]);
+
+  const activeAlerts = useMemo(
+    () => tempAlerts.filter(a => !a.handled && !a.resolved),
+    [tempAlerts]
+  );
+  const resolvedAlerts = useMemo(
+    () => tempAlerts.filter(a => a.resolved),
+    [tempAlerts]
+  );
+  const tempSummary = useMemo(() => {
+    if (tempRecords.length === 0) return null;
+    const temps = tempRecords.map(r => r.temp);
+    const avg = temps.reduce((s, t) => s + t, 0) / temps.length;
+    const max = Math.max(...temps);
+    const min = Math.min(...temps);
+    let compliance = 0;
+    if (task) {
+      const normalCount = temps.filter(t => t >= task.tempMin && t <= task.tempMax).length;
+      compliance = (normalCount / temps.length) * 100;
+    }
+    return {
+      avg: +avg.toFixed(1),
+      max: +max.toFixed(1),
+      min: +min.toFixed(1),
+      compliance: +compliance.toFixed(0),
+      count: temps.length
+    };
+  }, [tempRecords, task]);
+
+  const isFormStep = !task;
   const isConfirmStep = task && task.status === 'pending';
   const isDriving = task && task.status === 'in_transit';
-  const activeAlerts = tempAlerts.filter(a => !a.handled && !a.resolved);
+  const isCompleted = task && task.status === 'completed';
 
   return (
     <ScrollView scrollY className={styles.page} refresherEnabled onRefresherRefresh={handlePullDownRefresh}>
@@ -140,7 +204,7 @@ const TaskPage: React.FC = () => {
       </View>
 
       <View className={styles.contentSection}>
-        {/* ===== 录入表单阶段 ===== */}
+        {/* ===== 阶段1：录入表单 ===== */}
         {isFormStep && (
           <>
             <Text className={styles.sectionTitle}>出车前录入</Text>
@@ -155,6 +219,11 @@ const TaskPage: React.FC = () => {
                 />
                 <Button className={styles.scanBtn} onClick={handleScan}>扫码</Button>
               </View>
+              {taskDetail && (
+                <View className={styles.waybillFetched}>
+                  ✅ 已识别运单信息：{taskDetail.loadingAddr?.slice(0, 10)}... → {taskDetail.unloadingAddr?.slice(0, 10)}...
+                </View>
+              )}
             </View>
             <GoodsSelector
               options={GOODS_TYPE_OPTIONS}
@@ -171,14 +240,14 @@ const TaskPage: React.FC = () => {
           </>
         )}
 
-        {/* ===== 确认阶段：看到完整任务详情 ===== */}
+        {/* ===== 阶段2：任务确认 ===== */}
         {isConfirmStep && (
           <>
             <View className={styles.confirmBanner}>
               <Text className={styles.confirmBannerIcon}>📋</Text>
               <View className={styles.confirmBannerContent}>
                 <Text className={styles.confirmBannerTitle}>请确认本趟任务信息</Text>
-                <Text className={styles.confirmBannerHint}>核实无误后点击下方按钮开始运输</Text>
+                <Text className={styles.confirmBannerHint}>核实无误后点击开始运输</Text>
               </View>
             </View>
             <TaskInfoCard task={task} showDetails />
@@ -189,10 +258,19 @@ const TaskPage: React.FC = () => {
             >
               ✅ 确认无误，开始运输
             </Button>
+            <Button
+              className={styles.startBtnSecondary}
+              onClick={() => {
+                resetTask();
+                setWaybillNo(task.waybillNo);
+              }}
+            >
+              返回修改
+            </Button>
           </>
         )}
 
-        {/* ===== 行驶中阶段 ===== */}
+        {/* ===== 阶段3：行驶中 ===== */}
         {isDriving && (
           <>
             {activeAlerts.length > 0 && (
@@ -207,6 +285,20 @@ const TaskPage: React.FC = () => {
                   </Text>
                 </View>
                 <Text className={styles.alertBannerArrow}>›</Text>
+              </View>
+            )}
+
+            {activeAlerts.length === 0 && resolvedAlerts.length > 0 && tempSummary && (
+              <View className={classnames(styles.alertBanner, styles.resolvedBanner)}>
+                <Text className={styles.alertBannerIcon}>✅</Text>
+                <View className={styles.alertBannerContent}>
+                  <Text className={styles.resolvedBannerTitle}>
+                    当前温度正常 · 已缓解 {resolvedAlerts.length} 次预警
+                  </Text>
+                  <Text className={styles.resolvedBannerHint}>
+                    温区合规率 {tempSummary.compliance}%
+                  </Text>
+                </View>
               </View>
             )}
 
@@ -264,8 +356,117 @@ const TaskPage: React.FC = () => {
             <TaskInfoCard task={task} showDetails />
           </>
         )}
+
+        {/* ===== 阶段4：到站交付 ===== */}
+        {isCompleted && (
+          <>
+            <View className={styles.completeBanner}>
+              <Text className={styles.completeBannerIcon}>🎯</Text>
+              <View className={styles.completeBannerContent}>
+                <Text className={styles.completeBannerTitle}>本趟运输已完成交付</Text>
+                <Text className={styles.completeBannerHint}>
+                  请查看本趟温度合规与预警摘要
+                </Text>
+              </View>
+            </View>
+
+            <View className={styles.deliveryCard}>
+              <Text className={styles.deliveryCardTitle}>运输交付摘要</Text>
+              <View className={styles.deliveryWaybillRow}>
+                <Text className={styles.deliveryLabel}>运单号</Text>
+                <Text className={styles.deliveryValue}>{task.waybillNo}</Text>
+              </View>
+              <View className={styles.deliveryDivider} />
+              <View className={styles.deliveryWaybillRow}>
+                <Text className={styles.deliveryLabel}>路线</Text>
+                <Text className={styles.deliveryValueRight}>
+                  {task.loadingAddr.slice(0, 12)} → {task.unloadingAddr.slice(0, 12)}
+                </Text>
+              </View>
+            </View>
+
+            <View className={styles.deliveryStatsRow}>
+              <View className={styles.deliveryStat}>
+                <Text className={styles.deliveryStatLabel}>平均温度</Text>
+                <Text className={styles.deliveryStatValue}>
+                  {tempSummary ? formatTemp(tempSummary.avg) : '--'}
+                </Text>
+              </View>
+              <View className={styles.deliveryStat}>
+                <Text className={styles.deliveryStatLabel}>最高温度</Text>
+                <Text className={styles.deliveryStatValue} style={{ color: '#ef4444' }}>
+                  {tempSummary ? formatTemp(tempSummary.max) : '--'}
+                </Text>
+              </View>
+              <View className={styles.deliveryStat}>
+                <Text className={styles.deliveryStatLabel}>最低温度</Text>
+                <Text className={styles.deliveryStatValue} style={{ color: '#2563eb' }}>
+                  {tempSummary ? formatTemp(tempSummary.min) : '--'}
+                </Text>
+              </View>
+            </View>
+
+            <View className={styles.deliveryComplianceCard}>
+              <View className={styles.complianceHead}>
+                <Text className={styles.complianceLabel}>温区合规率</Text>
+                <Text className={styles.complianceValue}>
+                  {tempSummary ? tempSummary.compliance : 0}%
+                </Text>
+              </View>
+              <View className={styles.complianceBar}>
+                <View
+                  className={styles.complianceFill}
+                  style={{ width: `${tempSummary?.compliance || 0}%` }}
+                />
+              </View>
+              <Text className={styles.complianceHint}>
+                目标温区 {formatTemp(task.tempMin)} ~ {formatTemp(task.tempMax)}，采样 {tempSummary?.count || 0} 次
+              </Text>
+            </View>
+
+            <View className={styles.sectionHeader}>
+              <Text className={styles.sectionTitleSm}>本趟预警与反馈</Text>
+            </View>
+            <View className={styles.deliverySummaryRow}>
+              <View className={styles.summaryTag}>
+                <Text className={styles.summaryTagNum}>{tempAlerts.length}</Text>
+                <Text className={styles.summaryTagLabel}>总预警</Text>
+              </View>
+              <View className={styles.summaryTag}>
+                <Text className={styles.summaryTagNum}>{resolvedAlerts.length}</Text>
+                <Text className={styles.summaryTagLabel}>已缓解</Text>
+              </View>
+              <View className={styles.summaryTag}>
+                <Text className={styles.summaryTagNum}>{activeAlerts.length}</Text>
+                <Text className={styles.summaryTagLabel}>未处理</Text>
+              </View>
+              <View className={styles.summaryTag}>
+                <Text className={styles.summaryTagNum}>{feedbacks.length}</Text>
+                <Text className={styles.summaryTagLabel}>反馈记录</Text>
+              </View>
+            </View>
+            {activeAlerts.length > 0 && (
+              <View className={styles.unhandledWarn}>
+                ⚠️ 还有 {activeAlerts.length} 条预警未处理，请前往温度提醒查看
+              </View>
+            )}
+
+            <Button
+              className={styles.startBtn}
+              loading={completing}
+              style={{ display: 'none' }}
+            />
+            <Button
+              className={styles.startBtn}
+              onClick={handleNewOrder}
+            >
+              ➕ 新建下一单
+            </Button>
+          </>
+        )}
       </View>
 
+      {/* 行驶中底部操作 */}
       {isDriving && (
         <View className={styles.quickActions}>
           <Button className={`${styles.actionBtn} ${styles.actionBtnSecondary}`} onClick={handleRefreshTemp}>
@@ -273,9 +474,10 @@ const TaskPage: React.FC = () => {
           </Button>
           <Button
             className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
-            onClick={() => Taro.switchTab({ url: '/pages/feedback/index' })}
+            onClick={handleCompleteDelivery}
+            loading={completing}
           >
-            一键反馈
+            🎯 到站交付
           </Button>
         </View>
       )}

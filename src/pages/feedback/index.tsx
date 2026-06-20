@@ -1,10 +1,10 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { View, Text, Button, Textarea, ScrollView, Image } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import classnames from 'classnames';
 import { useAppStore } from '@/store';
 import { uploadPhotos, submitFeedback } from '@/services';
-import { speakIfEnabled } from '@/utils';
+import { speakIfEnabled, formatTemp } from '@/utils';
 import { CHECK_ITEM_OPTIONS } from '@/data/constants';
 import { CheckItemResult, CheckItemKey, FeedbackItem } from '@/types';
 import styles from './index.module.scss';
@@ -22,7 +22,7 @@ const typeMeta: Record<FeedbackType, {
   checked: {
     icon: '✅',
     text: '已检查',
-    hint: '一切正常，反馈状态',
+    hint: '处置完成，正常反馈',
     tagClass: styles.tagChecked,
     tagText: '已检查',
     historyIcon: '✔️'
@@ -52,7 +52,7 @@ const statusMeta: Record<FeedbackItem['status'], { text: string; class: string }
 };
 
 const FeedbackPage: React.FC = () => {
-  const { task, feedbacks, tempAlerts, addFeedback, voiceEnabled } = useAppStore();
+  const { task, feedbacks, tempAlerts, addFeedback, voiceEnabled, pendingAlertId, setPendingAlertId } = useAppStore();
 
   const [feedbackType, setFeedbackType] = useState<FeedbackType>('checked');
   const [content, setContent] = useState('');
@@ -70,15 +70,33 @@ const FeedbackPage: React.FC = () => {
     [tempAlerts]
   );
 
+  const linkedAlert = useMemo(
+    () => (selectedAlertId ? tempAlerts.find(a => a.id === selectedAlertId) : null),
+    [tempAlerts, selectedAlertId]
+  );
+
   const sortedFeedbacks = useMemo(
     () => [...feedbacks].sort((a, b) => new Date(b.createTime).getTime() - new Date(a.createTime).getTime()),
     [feedbacks]
   );
 
+  useEffect(() => {
+    if (pendingAlertId && !selectedAlertId) {
+      setSelectedAlertId(pendingAlertId);
+      const alert = tempAlerts.find(a => a.id === pendingAlertId);
+      if (alert) {
+        const isDanger = alert.severity === 'danger';
+        setFeedbackType(isDanger ? 'need_help' : 'checked');
+        Taro.showToast({ title: '已带入预警信息', icon: 'success' });
+      }
+    }
+  }, [pendingAlertId, selectedAlertId, tempAlerts]);
+
   const handleQuickAction = useCallback((type: FeedbackType) => {
     setFeedbackType(type);
     if (type === 'checked') {
-      setContent(prev => prev || '已按要求检查门封、制冷机组及油量');
+      setContent(prev => prev || '已按要求逐项检查，处置情况详见检查项');
+      setCheckResults({ door_seal: 'normal', refrigeration: 'normal', fuel: 'normal' });
     } else if (type === 'need_help') {
       setContent(prev => prev || '');
     } else {
@@ -128,23 +146,25 @@ const FeedbackPage: React.FC = () => {
     if (feedbackType === 'photo') {
       return photos.length > 0 || content.trim().length > 0;
     }
-    return content.trim().length > 0;
-  }, [task, feedbackType, photos, content]);
+    return content.trim().length > 0 || getCheckItems().length > 0;
+  }, [task, feedbackType, photos, content, getCheckItems]);
 
   const handleSubmit = useCallback(async () => {
     if (!canSubmit || !task) return;
     setSubmitting(true);
     try {
+      const items = getCheckItems();
       const feedbackData = {
         taskId: task.id,
         alertId: selectedAlertId || undefined,
         type: feedbackType,
-        content: content.trim(),
-        checkItems: getCheckItems().length > 0 ? getCheckItems() : undefined,
+        content: content.trim() || (items.length > 0 ? '已完成逐项检查并提交结果' : ''),
+        checkItems: items.length > 0 ? items : undefined,
         photos: photos.length > 0 ? photos : undefined
       };
       await submitFeedback(feedbackData);
       addFeedback(feedbackData);
+      setPendingAlertId(null);
       Taro.showToast({ title: '反馈已发送，调度端已收到', icon: 'success' });
       speakIfEnabled(
         voiceEnabled,
@@ -156,26 +176,28 @@ const FeedbackPage: React.FC = () => {
       setPhotos([]);
       setSelectedAlertId('');
       setCheckResults({ door_seal: 'uncheck', refrigeration: 'uncheck', fuel: 'uncheck' });
+      setFeedbackType('checked');
     } catch (e) {
       console.error('[FeedbackPage] handleSubmit error:', e);
       Taro.showToast({ title: '发送失败，请重试', icon: 'error' });
     } finally {
       setSubmitting(false);
     }
-  }, [canSubmit, task, feedbackType, content, photos, selectedAlertId, getCheckItems, addFeedback, voiceEnabled]);
+  }, [canSubmit, task, feedbackType, content, photos, selectedAlertId, getCheckItems, addFeedback, voiceEnabled, setPendingAlertId]);
 
   const handleReset = useCallback(() => {
     setContent('');
     setPhotos([]);
     setFeedbackType('checked');
     setSelectedAlertId('');
+    setPendingAlertId(null);
     setCheckResults({ door_seal: 'uncheck', refrigeration: 'uncheck', fuel: 'uncheck' });
-  }, []);
+  }, [setPendingAlertId]);
 
   const placeholderMap: Record<FeedbackType, string> = {
-    checked: '请描述检查情况，例如：门封完好、制冷机组运行正常、油量充足...',
-    need_help: '请详细描述遇到的问题，例如：门封条磨损、制冷机组故障、需要临时停车检查...',
-    photo: '可输入照片说明，例如：门封条磨损情况、温度显示屏照片...'
+    checked: '可补充说明检查情况，例如：门封已重新扣紧、制冷机正常、油量68%',
+    need_help: '请详细描述遇到的问题，例如：门封条磨损需更换、制冷机组异响、油量不足20%',
+    photo: '可输入照片说明，例如：门封条磨损处、温度显示屏、制冷机组铭牌'
   };
 
   return (
@@ -190,7 +212,7 @@ const FeedbackPage: React.FC = () => {
             >
               <Text className={styles.qaBtnIcon}>✅</Text>
               <Text className={styles.qaBtnText}>已检查</Text>
-              <Text className={styles.qaBtnHint}>一切正常</Text>
+              <Text className={styles.qaBtnHint}>处置完成</Text>
             </Button>
             <Button
               className={styles.qaBtn}
@@ -198,7 +220,7 @@ const FeedbackPage: React.FC = () => {
             >
               <Text className={styles.qaBtnIcon}>🆘</Text>
               <Text className={styles.qaBtnText}>需要协助</Text>
-              <Text className={styles.qaBtnHint}>请求支持</Text>
+              <Text className={styles.qaBtnHint}>请求调度</Text>
             </Button>
           </View>
           <Button
@@ -218,15 +240,35 @@ const FeedbackPage: React.FC = () => {
       <View className={styles.formSection}>
         <View className={styles.formCard}>
           <View className={styles.formHeader}>
-            <Text className={styles.formTitle}>反馈详情</Text>
+            <Text className={styles.formTitle}>处置反馈详情</Text>
             <View className={classnames(styles.formTypeTag, typeMeta[feedbackType].tagClass)}>
               {typeMeta[feedbackType].tagText}
             </View>
           </View>
 
-          {activeAlerts.length > 0 && (
+          {/* 带入的预警信息展示 */}
+          {linkedAlert && (
+            <View className={styles.linkedAlertBox}>
+              <View className={styles.linkedAlertHead}>
+                <Text className={styles.linkedAlertHeadIcon}>⚠️</Text>
+                <Text className={styles.linkedAlertHeadTitle}>已关联此条温度预警</Text>
+                <Text className={styles.linkedAlertClose} onClick={() => setSelectedAlertId('')}>取消关联</Text>
+              </View>
+              <View className={styles.linkedAlertBody}>
+                <View className={styles.linkedAlertTemp}>
+                  <Text className={styles.linkedAlertTempValue}>{formatTemp(linkedAlert.currentTemp)}</Text>
+                  <Text className={styles.linkedAlertTempRange}>
+                    目标 {formatTemp(linkedAlert.targetMin)}~{formatTemp(linkedAlert.targetMax)}
+                  </Text>
+                </View>
+                <Text className={styles.linkedAlertTime}>时间：{linkedAlert.time}</Text>
+              </View>
+            </View>
+          )}
+
+          {(activeAlerts.length > 0 || (tempAlerts.length > 0 && selectedAlertId)) && !linkedAlert && (
             <>
-              <Text className={styles.formLabel}>关联温度预警</Text>
+              <Text className={styles.formLabel}>关联温度预警（可选）</Text>
               <View className={styles.alertSelector}>
                 {activeAlerts.map(alert => (
                   <View
@@ -242,7 +284,7 @@ const FeedbackPage: React.FC = () => {
                     </Text>
                     <View className={styles.alertOptionContent}>
                       <Text className={styles.alertOptionTemp}>
-                        {alert.currentTemp.toFixed(1)}℃
+                        {formatTemp(alert.currentTemp)}
                       </Text>
                       <Text className={styles.alertOptionTime}>{alert.time}</Text>
                     </View>
@@ -284,8 +326,8 @@ const FeedbackPage: React.FC = () => {
           </View>
 
           <Text className={styles.formLabel}>
-            {feedbackType !== 'photo' && <Text className={styles.formRequired}>*</Text>}
-            反馈内容
+            {feedbackType !== 'photo' && getCheckItems().length === 0 && <Text className={styles.formRequired}>*</Text>}
+            补充说明
           </Text>
           <Textarea
             className={styles.textareaField}
@@ -330,7 +372,7 @@ const FeedbackPage: React.FC = () => {
           </View>
         ) : (
           sortedFeedbacks.map(fb => {
-            const linkedAlert = fb.alertId ? tempAlerts.find(a => a.id === fb.alertId) : null;
+            const linked = fb.alertId ? tempAlerts.find(a => a.id === fb.alertId) : null;
             return (
               <View key={fb.id} className={styles.historyItem}>
                 <View className={styles.historyItemHeader}>
@@ -347,14 +389,17 @@ const FeedbackPage: React.FC = () => {
                   </View>
                 </View>
                 <Text className={styles.historyTime}>{fb.createTime}</Text>
-                {linkedAlert && (
+                {linked && (
                   <View className={styles.linkedAlert}>
                     <Text className={styles.linkedAlertIcon}>
-                      {linkedAlert.severity === 'danger' ? '🔴' : '🟠'}
+                      {linked.severity === 'danger' ? '🔴' : '🟠'}
                     </Text>
                     <Text className={styles.linkedAlertText}>
-                      关联预警：{linkedAlert.currentTemp.toFixed(1)}℃ {linkedAlert.time}
+                      关联预警：{formatTemp(linked.currentTemp)} {linked.time}
                     </Text>
+                    {linked.resolved && (
+                      <Text className={styles.linkedAlertResolved}>· 已缓解</Text>
+                    )}
                   </View>
                 )}
                 {fb.checkItems && fb.checkItems.length > 0 && (

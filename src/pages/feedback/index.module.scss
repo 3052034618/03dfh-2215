@@ -570,3 +570,77 @@
   background: $color-error-bg;
   color: $color-error;
 }
+
+/* 关联预警盒子（进入时已带入预警的展示） */
+.linkedAlertBox {
+  margin: $spacing-md 0;
+  padding: $spacing-md;
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.08) 0%, rgba(239, 68, 68, 0.06) 100%);
+  border: 2rpx solid $color-warning;
+  border-radius: $radius-lg;
+}
+
+.linkedAlertHead {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  margin-bottom: $spacing-sm;
+}
+
+.linkedAlertHeadIcon {
+  font-size: 32rpx;
+}
+
+.linkedAlertHeadTitle {
+  flex: 1;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $color-warning;
+}
+
+.linkedAlertClose {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  padding: $spacing-xs $spacing-sm;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: $radius-xs;
+}
+
+.linkedAlertBody {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: $spacing-sm $spacing-md;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: $radius-md;
+}
+
+.linkedAlertTemp {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.linkedAlertTempValue {
+  font-size: 48rpx;
+  font-weight: $font-weight-bold;
+  color: $color-warning;
+  line-height: 1.1;
+}
+
+.linkedAlertTempRange {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+.linkedAlertTime {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.linkedAlertResolved {
+  font-size: $font-size-xs;
+  color: $color-success;
+  font-weight: $font-weight-medium;
+  margin-left: auto;
+}

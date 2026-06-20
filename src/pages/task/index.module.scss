@@ -44,6 +44,16 @@
   margin-bottom: $spacing-md;
 }
 
+.waybillFetched {
+  margin-top: $spacing-sm;
+  padding: $spacing-xs $spacing-sm;
+  background: $color-success-bg;
+  color: $color-success;
+  border-radius: $radius-sm;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+}
+
 .inputLabel {
   display: block;
   font-size: $font-size-md;
@@ -99,7 +109,7 @@
   color: $color-text-white;
   font-size: $font-size-lg;
   font-weight: $font-weight-semibold;
-  margin-top: $spacing-xl;
+  margin-top: $spacing-lg;
 
   &:active {
     opacity: 0.9;
@@ -109,6 +119,24 @@
   &:disabled {
     opacity: 0.5;
     pointer-events: none;
+  }
+}
+
+.startBtnSecondary {
+  @include button-reset;
+  width: 100%;
+  height: $button-height-md;
+  background: $color-bg-card;
+  border-radius: $radius-button;
+  color: $color-text-secondary;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  margin-top: $spacing-md;
+  border: 2rpx solid $color-border;
+
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.98);
   }
 }
 
@@ -186,6 +214,229 @@
   font-size: $font-size-xl;
   color: #c2410c;
   font-weight: $font-weight-bold;
+}
+
+.resolvedBanner {
+  background: $color-success-bg;
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.resolvedBanner .resolvedBannerTitle {
+  color: #166534;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  display: block;
+  margin-bottom: 4rpx;
+}
+
+.resolvedBanner .resolvedBannerHint {
+  color: #15803d;
+  font-size: $font-size-sm;
+  display: block;
+}
+
+/* 完成交付横幅 */
+.completeBanner {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  background: linear-gradient(135deg, $color-primary-bg 0%, #f0fdf4 100%);
+  border-radius: $radius-xl;
+  padding: $spacing-xl;
+  margin-bottom: $spacing-md;
+  border: 2rpx solid rgba(2, 132, 199, 0.2);
+}
+
+.completeBannerIcon {
+  font-size: 56rpx;
+}
+
+.completeBannerTitle {
+  display: block;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-primary-dark;
+  margin-bottom: 6rpx;
+}
+
+.completeBannerHint {
+  display: block;
+  font-size: $font-size-sm;
+  color: $color-primary;
+}
+
+/* 交付摘要卡片 */
+.deliveryCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  margin-bottom: $spacing-md;
+}
+
+.deliveryCardTitle {
+  display: block;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-md;
+  padding-bottom: $spacing-sm;
+  border-bottom: 2rpx solid $color-divider;
+}
+
+.deliveryWaybillRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: $spacing-sm 0;
+  gap: $spacing-sm;
+}
+
+.deliveryLabel {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  flex-shrink: 0;
+}
+
+.deliveryValue {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  font-weight: $font-weight-semibold;
+  font-family: monospace;
+}
+
+.deliveryValueRight {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  font-weight: $font-weight-medium;
+  text-align: right;
+  flex: 1;
+}
+
+.deliveryDivider {
+  height: 2rpx;
+  background: $color-divider;
+  margin: 4rpx 0;
+}
+
+/* 温度摘要3栏 */
+.deliveryStatsRow {
+  display: flex;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-md;
+}
+
+.deliveryStat {
+  flex: 1;
+  background: $color-bg-card;
+  border-radius: $radius-md;
+  padding: $spacing-md;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+  box-shadow: $shadow-card;
+}
+
+.deliveryStatLabel {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.deliveryStatValue {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-primary;
+}
+
+/* 合规率卡片 */
+.deliveryComplianceCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  margin-bottom: $spacing-md;
+}
+
+.complianceHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: $spacing-sm;
+}
+
+.complianceLabel {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.complianceValue {
+  font-size: $font-size-xxl;
+  font-weight: $font-weight-bold;
+  color: $color-success;
+}
+
+.complianceBar {
+  height: 16rpx;
+  background: $color-bg-hover;
+  border-radius: $radius-round;
+  overflow: hidden;
+  margin-bottom: $spacing-xs;
+}
+
+.complianceFill {
+  height: 100%;
+  background: linear-gradient(90deg, $color-primary 0%, $color-success 100%);
+  border-radius: $radius-round;
+  transition: width $transition-base;
+}
+
+.complianceHint {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+/* 预警反馈摘要 */
+.deliverySummaryRow {
+  display: flex;
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-md;
+  box-shadow: $shadow-card;
+  margin-bottom: $spacing-md;
+  gap: $spacing-xs;
+}
+
+.summaryTag {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6rpx;
+  padding: $spacing-xs 0;
+}
+
+.summaryTagNum {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+}
+
+.summaryTagLabel {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.unhandledWarn {
+  background: $color-warning-bg;
+  color: #9a3412;
+  padding: $spacing-sm $spacing-md;
+  border-radius: $radius-md;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  margin-bottom: $spacing-md;
+  text-align: center;
 }
 
 .statsBar {
@@ -293,7 +544,7 @@
 }
 
 .actionBtnPrimary {
-  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: $color-text-white;
 }
 

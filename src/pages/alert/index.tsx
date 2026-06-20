@@ -8,7 +8,7 @@ import classnames from 'classnames';
 import styles from './index.module.scss';
 
 const AlertPage: React.FC = () => {
-  const { task, tempAlerts, tempRecords, voiceEnabled, handleAlert, toggleVoice } = useAppStore();
+  const { task, tempAlerts, tempRecords, voiceEnabled, handleAlert, toggleVoice, setPendingAlertId } = useAppStore();
 
   const unhandledCount = useMemo(
     () => tempAlerts.filter(a => !a.handled && !a.resolved).length,
@@ -68,17 +68,20 @@ const AlertPage: React.FC = () => {
 
   const handleMarkChecked = useCallback(async (alertId) => {
     try {
-      handleAlert(alertId);
-      Taro.showToast({ title: '已标记为处理', icon: 'success' });
-      speakIfEnabled(voiceEnabled, '已确认处理，请注意继续监控温度');
+      setPendingAlertId(alertId);
+      Taro.showToast({ title: '已带入预警信息', icon: 'success' });
+      setTimeout(() => {
+        Taro.switchTab({ url: '/pages/feedback/index' });
+      }, 400);
     } catch (e) {
       console.error('[AlertPage] handleMarkChecked error:', e);
     }
-  }, [handleAlert, voiceEnabled]);
+  }, [setPendingAlertId]);
 
   const handleGoFeedback = useCallback((alertId) => {
+    setPendingAlertId(alertId);
     Taro.switchTab({ url: '/pages/feedback/index' });
-  }, []);
+  }, [setPendingAlertId]);
 
   if (!task) {
     return (
@@ -284,14 +287,19 @@ const AlertPage: React.FC = () => {
                     className={`${styles.actionBtn} ${styles.actionChecked}`}
                     onClick={() => handleMarkChecked(alert.id)}
                   >
-                    ✓ 已检查
+                    ✓ 已检查·处置
                   </Button>
                   <Button
                     className={`${styles.actionBtn} ${styles.actionHelp}`}
                     onClick={() => handleGoFeedback(alert.id)}
                   >
-                    需要协助
+                    🆘 需协助
                   </Button>
+                </View>
+              )}
+              {alert.handled && !alert.resolved && (
+                <View className={styles.alertDoneHint}>
+                  📋 已提交处置，请在反馈记录查看调度回复
                 </View>
               )}
             </View>

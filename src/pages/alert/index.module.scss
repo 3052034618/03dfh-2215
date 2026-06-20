@@ -446,6 +446,17 @@
   color: $color-text-white;
 }
 
+.alertDoneHint {
+  margin-top: $spacing-md;
+  padding: $spacing-sm $spacing-md;
+  background: $color-primary-bg;
+  color: $color-primary;
+  border-radius: $radius-sm;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  text-align: center;
+}
+
 .alertStatusRow {
   display: flex;
   gap: $spacing-xs;

@@ -11,18 +11,20 @@ interface AppState {
   tempRecords: TempRecord[];
   feedbacks: FeedbackItem[];
   voiceEnabled: boolean;
+  pendingAlertId: string | null;
 
   setTask: (task: Task) => void;
   createTask: (waybillNo: string, goodsType: GoodsType, tempMin: number, tempMax: number, extra?: Partial<Task>) => void;
-  confirmTask: () => void;
   startTask: () => void;
   completeTask: () => void;
+  resetTask: () => void;
   updateCurrentTemp: (temp: number) => void;
   handleAlert: (alertId: string) => void;
   markAlertVoiced: (alertId: string) => void;
   resolveAlertsIfNeeded: (currentTemp: number, tempMin: number, tempMax: number) => void;
   addFeedback: (feedback: Omit<FeedbackItem, 'id' | 'createTime' | 'status'>) => void;
   toggleVoice: () => void;
+  setPendingAlertId: (id: string | null) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -33,10 +35,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   tempRecords: MOCK_TEMP_RECORDS,
   feedbacks: MOCK_FEEDBACKS,
   voiceEnabled: true,
+  pendingAlertId: null,
 
   setTask: (task) => set({ task }),
 
   createTask: (waybillNo, goodsType, tempMin, tempMax, extra) => {
+    const nowStr = new Date().toLocaleString('zh-CN');
+    const arrTimes = new Date();
+    arrTimes.setHours(arrTimes.getHours() + 20);
+    const arrivalStr = arrTimes.toLocaleString('zh-CN');
+
     const newTask: Task = {
       id: `TASK${Date.now()}`,
       waybillNo,
@@ -47,31 +55,37 @@ export const useAppStore = create<AppState>((set, get) => ({
       loadingAddr: extra?.loadingAddr || '待确认装货地址',
       unloadingAddr: extra?.unloadingAddr || '待确认卸货地址',
       recommendedRoute: extra?.recommendedRoute || '系统规划中...',
-      estimatedDeparture: extra?.estimatedDeparture || new Date().toLocaleString('zh-CN'),
-      estimatedArrival: extra?.estimatedArrival || '预计到达时间计算中',
-      status: 'loading',
+      estimatedDeparture: extra?.estimatedDeparture || nowStr,
+      estimatedArrival: extra?.estimatedArrival || arrivalStr,
+      status: 'pending',
       currentTemp: (tempMin + tempMax) / 2,
       fuelLevel: 95,
       distance: 0,
       elapsedTime: '0小时0分'
     };
-    set({ task: newTask, tempRecords: [], tempAlerts: [], feedbacks: [] });
-    console.log('[Store] createTask:', { waybillNo, goodsType, tempMin, tempMax });
-  },
-
-  confirmTask: () => {
-    set((state) => {
-      if (!state.task || state.task.status !== 'loading') return state;
-      return { task: { ...state.task, status: 'pending' } };
+    set({
+      task: newTask,
+      tempRecords: [],
+      tempAlerts: [],
+      feedbacks: [],
+      pendingAlertId: null
     });
-    console.log('[Store] confirmTask');
+    console.log('[Store] createTask:', { waybillNo, goodsType, tempMin, tempMax, status: 'pending' });
   },
 
   startTask: () => {
-    const { task } = get();
-    if (task) {
-      set({ task: { ...task, status: 'in_transit' } });
+    const { task, tempMin, tempMax } = get();
+    if (task && task.status === 'pending') {
+      const now = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+      const currentTemp = task.currentTemp;
+      set({
+        task: { ...task, status: 'in_transit' },
+        tempRecords: [{ time: now, temp: currentTemp }]
+      });
       console.log('[Store] startTask:', task.id);
+    } else if (task) {
+      set({ task: { ...task, status: 'in_transit' } });
+      console.log('[Store] startTask (force):', task.id, task.status);
     }
   },
 
@@ -83,19 +97,46 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
+  resetTask: () => {
+    set({
+      task: null,
+      tempAlerts: [],
+      tempRecords: [],
+      feedbacks: [],
+      pendingAlertId: null,
+      riskPoints: []
+    });
+    console.log('[Store] resetTask: back to new order');
+  },
+
   updateCurrentTemp: (temp) => {
     const { task, tempRecords, tempAlerts, voiceEnabled } = get();
     if (!task) return;
 
     const now = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
     const newRecord: TempRecord = { time: now, temp };
-    const newRecords = [...tempRecords, newRecord].slice(-50);
+    const newRecords = [...tempRecords, newRecord].slice(-80);
 
     const status = getTempStatus(temp, task.tempMin, task.tempMax);
 
     let newAlerts = [...tempAlerts];
+
+    if (status === 'normal') {
+      let anyResolved = false;
+      newAlerts = newAlerts.map(a => {
+        if (!a.resolved) {
+          anyResolved = true;
+          return { ...a, resolved: true };
+        }
+        return a;
+      });
+      if (anyResolved) {
+        console.log('[Store] updateCurrentTemp: resolved alerts detected');
+      }
+    }
+
     if (status === 'warning' || status === 'danger') {
-      const existingUnhandled = tempAlerts.find(a => !a.handled && !a.resolved);
+      const existingUnhandled = newAlerts.find(a => !a.handled && !a.resolved);
       if (!existingUnhandled) {
         const driftDirection = temp > (task.tempMin + task.tempMax) / 2 ? 'up' : 'down';
         const driftValue = driftDirection === 'up'
@@ -137,15 +178,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     }
 
-    if (status === 'normal') {
-      newAlerts = newAlerts.map(a => {
-        if (!a.resolved) {
-          return { ...a, resolved: true };
-        }
-        return a;
-      });
-    }
-
     set({
       task: { ...task, currentTemp: temp },
       tempRecords: newRecords,
@@ -179,17 +211,35 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   addFeedback: (feedback) => {
+    const fbId = `FB${Date.now()}`;
     const newFeedback: FeedbackItem = {
       ...feedback,
-      id: `FB${Date.now()}`,
+      id: fbId,
       createTime: new Date().toLocaleString('zh-CN'),
       status: 'sent'
     };
-    set((state) => ({ feedbacks: [newFeedback, ...state.feedbacks] }));
-    console.log('[Store] addFeedback:', newFeedback);
+
+    if (feedback.alertId) {
+      set((state) => ({
+        feedbacks: [newFeedback, ...state.feedbacks],
+        tempAlerts: state.tempAlerts.map(a =>
+          a.id === feedback.alertId ? { ...a, handled: true } : a
+        ),
+        pendingAlertId: state.pendingAlertId === feedback.alertId ? null : state.pendingAlertId
+      }));
+      console.log('[Store] addFeedback: linked to alert', feedback.alertId, 'marked handled');
+    } else {
+      set((state) => ({ feedbacks: [newFeedback, ...state.feedbacks] }));
+      console.log('[Store] addFeedback: standalone feedback');
+    }
   },
 
   toggleVoice: () => {
     set((state) => ({ voiceEnabled: !state.voiceEnabled }));
+  },
+
+  setPendingAlertId: (id) => {
+    set({ pendingAlertId: id });
+    console.log('[Store] setPendingAlertId:', id);
   }
 }));
