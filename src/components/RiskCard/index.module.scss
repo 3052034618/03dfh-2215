@@ -108,3 +108,75 @@
   font-size: $font-size-sm;
   font-weight: $font-weight-medium;
 }
+
+/* 预估温度 */
+.tempEstimate {
+  display: flex;
+  align-items: baseline;
+  gap: $spacing-xs;
+  margin-top: $spacing-md;
+  padding: $spacing-sm $spacing-md;
+  background: linear-gradient(90deg, $color-warning-bg 0%, transparent 100%);
+  border-radius: $radius-sm;
+  border-left: 4rpx solid $color-warning;
+}
+
+.tempEstimateLabel {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+.tempEstimateValue {
+  font-size: 36rpx;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+}
+
+.tempWarning {
+  color: $color-warning;
+}
+
+.tempDanger {
+  color: $color-error;
+}
+
+.tempEstimateRange {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+/* 处置建议 */
+.actionSection {
+  display: flex;
+  gap: $spacing-md;
+  margin-top: $spacing-md;
+  padding: $spacing-md;
+  background: $color-primary-bg;
+  border-radius: $radius-md;
+  border: 2rpx solid rgba(2, 132, 199, 0.2);
+}
+
+.actionIcon {
+  font-size: 40rpx;
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.actionContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.actionTitle {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $color-primary;
+}
+
+.actionDesc {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  line-height: 1.5;
+}

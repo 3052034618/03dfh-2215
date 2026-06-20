@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, Text, Input, Button, ScrollView } from '@tarojs/components';
+import { View, Text, Input, Button, ScrollView, Textarea, Image } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import { useAppStore } from '@/store';
 import TempCard from '@/components/TempCard';
@@ -7,7 +7,7 @@ import RiskCard from '@/components/RiskCard';
 import TaskInfoCard from '@/components/TaskInfoCard';
 import GoodsSelector from '@/components/GoodsSelector';
 import { GOODS_TYPE_OPTIONS, MOCK_RISK_POINTS } from '@/data/mock';
-import { scanWaybill, fetchCurrentTemp, fetchWaybillDetail } from '@/services';
+import { scanWaybill, fetchCurrentTemp, fetchWaybillDetail, uploadPhotos } from '@/services';
 import { GoodsType, Task, TempRecord } from '@/types';
 import { speakIfEnabled, getTempStatus, formatTemp } from '@/utils';
 import classnames from 'classnames';
@@ -22,11 +22,13 @@ const TaskPage: React.FC = () => {
     createTask,
     startTask,
     completeTask,
+    completeTaskWithDelivery,
     resetTask,
     updateCurrentTemp,
     tempAlerts,
     tempRecords,
-    feedbacks
+    feedbacks,
+    lastDeliveryRecord
   } = useAppStore();
 
   const [waybillNo, setWaybillNo] = useState('');
@@ -36,6 +38,9 @@ const TaskPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [taskDetail, setTaskDetail] = useState<Partial<Task> | null>(null);
+  const [receiverName, setReceiverName] = useState('');
+  const [deliveryNote, setDeliveryNote] = useState('');
+  const [deliveryPhotos, setDeliveryPhotos] = useState<string[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const handleScan = useCallback(async () => {
@@ -139,9 +144,40 @@ const TaskPage: React.FC = () => {
     setTimeout(() => {
       completeTask();
       setCompleting(false);
-      speakIfEnabled(voiceEnabled, '恭喜，本趟运输已确认完成，请查看交付摘要');
+      speakIfEnabled(voiceEnabled, '已到站，请完成交付确认');
     }, 800);
   }, [completeTask, voiceEnabled]);
+
+  const handleAddDeliveryPhoto = useCallback(async () => {
+    try {
+      const paths = await uploadPhotos(3 - deliveryPhotos.length);
+      setDeliveryPhotos(prev => [...prev, ...paths].slice(0, 3));
+    } catch (e) {
+      console.error('[TaskPage] handleAddDeliveryPhoto error:', e);
+    }
+  }, [deliveryPhotos.length]);
+
+  const handleRemoveDeliveryPhoto = useCallback((index: number) => {
+    setDeliveryPhotos(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const handleConfirmDelivery = useCallback(() => {
+    if (!receiverName.trim()) {
+      Taro.showToast({ title: '请输入收货人姓名', icon: 'none' });
+      return;
+    }
+    setCompleting(true);
+    setTimeout(() => {
+      completeTaskWithDelivery({
+        receiverName: receiverName.trim(),
+        deliveryNote: deliveryNote.trim(),
+        photos: deliveryPhotos
+      });
+      setCompleting(false);
+      Taro.showToast({ title: '交付确认已完成', icon: 'success' });
+      speakIfEnabled(voiceEnabled, '交付已确认，可查看本趟运输摘要');
+    }, 800);
+  }, [receiverName, deliveryNote, deliveryPhotos, completeTaskWithDelivery, voiceEnabled]);
 
   const handleNewOrder = useCallback(() => {
     Taro.showModal({
@@ -155,6 +191,9 @@ const TaskPage: React.FC = () => {
           setTempMin(2);
           setTempMax(8);
           setTaskDetail(null);
+          setReceiverName('');
+          setDeliveryNote('');
+          setDeliveryPhotos([]);
           Taro.pageScrollTo?.({ scrollTop: 0, duration: 200 });
         }
       }
@@ -207,6 +246,37 @@ const TaskPage: React.FC = () => {
         {/* ===== 阶段1：录入表单 ===== */}
         {isFormStep && (
           <>
+            {lastDeliveryRecord && (
+              <View className={styles.lastDeliveryCard}>
+                <View className={styles.lastDeliveryHead}>
+                  <Text className={styles.lastDeliveryIcon}>📦</Text>
+                  <Text className={styles.lastDeliveryTitle}>上一单交付记录</Text>
+                </View>
+                <View className={styles.lastDeliveryRow}>
+                  <Text className={styles.lastDeliveryLabel}>运单号</Text>
+                  <Text className={styles.lastDeliveryValue}>{lastDeliveryRecord.waybillNo}</Text>
+                </View>
+                <View className={styles.lastDeliveryRow}>
+                  <Text className={styles.lastDeliveryLabel}>路线</Text>
+                  <Text className={styles.lastDeliveryValue}>{lastDeliveryRecord.route}</Text>
+                </View>
+                <View className={styles.lastDeliveryRow}>
+                  <Text className={styles.lastDeliveryLabel}>交付时间</Text>
+                  <Text className={styles.lastDeliveryValue}>{lastDeliveryRecord.confirmTime}</Text>
+                </View>
+                <View className={styles.lastDeliveryRow}>
+                  <Text className={styles.lastDeliveryLabel}>合规率</Text>
+                  <Text className={styles.lastDeliveryValue} style={{
+                    color: lastDeliveryRecord.compliance >= 95 ? '#10b981' : lastDeliveryRecord.compliance >= 80 ? '#f97316' : '#ef4444'
+                  }}>
+                    {lastDeliveryRecord.compliance}%
+                  </Text>
+                </View>
+                <View className={styles.lastDeliveryGoods}>
+                  {GOODS_TYPE_OPTIONS.find(g => g.key === lastDeliveryRecord.goodsType)?.label}
+                </View>
+              </View>
+            )}
             <Text className={styles.sectionTitle}>出车前录入</Text>
             <View className={styles.inputCard}>
               <Text className={styles.inputLabel}>运单号</Text>
@@ -342,7 +412,14 @@ const TaskPage: React.FC = () => {
             </View>
             {riskPoints.length > 0 ? (
               riskPoints.map((risk, idx) => (
-                <RiskCard key={risk.id} risk={risk} isFirst={idx === 0} />
+                <RiskCard
+                  key={risk.id}
+                  risk={risk}
+                  isFirst={idx === 0}
+                  currentTemp={task.currentTemp}
+                  tempMin={task.tempMin}
+                  tempMax={task.tempMax}
+                />
               ))
             ) : (
               <View className={styles.inputCard} style={{ textAlign: 'center' }}>
@@ -358,7 +435,74 @@ const TaskPage: React.FC = () => {
         )}
 
         {/* ===== 阶段4：到站交付 ===== */}
-        {isCompleted && (
+        {isCompleted && !task.deliveryInfo && (
+          <>
+            <View className={styles.completeBanner}>
+              <Text className={styles.completeBannerIcon}>🎯</Text>
+              <View className={styles.completeBannerContent}>
+                <Text className={styles.completeBannerTitle}>已到达卸货地</Text>
+                <Text className={styles.completeBannerHint}>
+                  请填写交付信息并确认
+                </Text>
+              </View>
+            </View>
+
+            <View className={styles.deliveryFormCard}>
+              <Text className={styles.deliveryFormTitle}>交付确认</Text>
+
+              <Text className={styles.formLabel}>
+                <Text className={styles.formRequired}>*</Text>收货人姓名
+              </Text>
+              <Input
+                className={styles.inputField}
+                placeholder="请输入收货人姓名"
+                value={receiverName}
+                onInput={e => setReceiverName(e.detail.value)}
+              />
+
+              <Text className={styles.formLabel}>交付备注</Text>
+              <Textarea
+                className={styles.textareaField}
+                placeholder="可记录货物状态、异常情况、交接说明等"
+                value={deliveryNote}
+                onInput={e => setDeliveryNote(e.detail.value)}
+                maxlength={300}
+                showConfirmBar={false}
+                autoHeight
+              />
+              <Text style={{ fontSize: '22rpx', color: '#86909c', marginTop: '8rpx', textAlign: 'right' }}>
+                {deliveryNote.length}/300
+              </Text>
+
+              <Text className={styles.formLabel}>现场照片（可选，最多3张）</Text>
+              <View className={styles.photoSection}>
+                {deliveryPhotos.map((path, idx) => (
+                  <View key={idx} className={styles.photoItem}>
+                    <Image className={styles.photoImg} src={path} mode="aspectFill" />
+                    <View className={styles.photoRemove} onClick={() => handleRemoveDeliveryPhoto(idx)}>×</View>
+                  </View>
+                ))}
+                {deliveryPhotos.length < 3 && (
+                  <View className={styles.photoAdd} onClick={handleAddDeliveryPhoto}>
+                    <Text className={styles.photoAddIcon}>+</Text>
+                    <Text className={styles.photoAddText}>添加照片</Text>
+                  </View>
+                )}
+              </View>
+
+              <Button
+                className={styles.startBtn}
+                loading={completing}
+                onClick={handleConfirmDelivery}
+              >
+                ✅ 确认交付
+              </Button>
+            </View>
+          </>
+        )}
+
+        {/* ===== 阶段5：交付摘要 ===== */}
+        {isCompleted && task.deliveryInfo && (
           <>
             <View className={styles.completeBanner}>
               <Text className={styles.completeBannerIcon}>🎯</Text>
@@ -376,6 +520,20 @@ const TaskPage: React.FC = () => {
                 <Text className={styles.deliveryLabel}>运单号</Text>
                 <Text className={styles.deliveryValue}>{task.waybillNo}</Text>
               </View>
+              <View className={styles.deliveryWaybillRow}>
+                <Text className={styles.deliveryLabel}>收货人</Text>
+                <Text className={styles.deliveryValue}>{task.deliveryInfo.receiverName}</Text>
+              </View>
+              <View className={styles.deliveryWaybillRow}>
+                <Text className={styles.deliveryLabel}>交付时间</Text>
+                <Text className={styles.deliveryValue}>{task.deliveryInfo.confirmTime}</Text>
+              </View>
+              {task.deliveryInfo.deliveryNote && (
+                <View className={styles.deliveryWaybillRow}>
+                  <Text className={styles.deliveryLabel}>备注</Text>
+                  <Text className={styles.deliveryValue}>{task.deliveryInfo.deliveryNote}</Text>
+                </View>
+              )}
               <View className={styles.deliveryDivider} />
               <View className={styles.deliveryWaybillRow}>
                 <Text className={styles.deliveryLabel}>路线</Text>
@@ -383,6 +541,13 @@ const TaskPage: React.FC = () => {
                   {task.loadingAddr.slice(0, 12)} → {task.unloadingAddr.slice(0, 12)}
                 </Text>
               </View>
+              {task.deliveryInfo.photos.length > 0 && (
+                <View className={styles.deliveryPhotosRow}>
+                  {task.deliveryInfo.photos.map((p, i) => (
+                    <Image key={i} className={styles.deliveryPhoto} src={p} mode="aspectFill" />
+                  ))}
+                </View>
+              )}
             </View>
 
             <View className={styles.deliveryStatsRow}>

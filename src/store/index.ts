@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Task, RiskPoint, TempAlert, FeedbackItem, TempRecord, DriverInfo, GoodsType, CheckItemResult } from '@/types';
+import { Task, RiskPoint, TempAlert, FeedbackItem, TempRecord, DriverInfo, GoodsType, CheckItemResult, DeliveryRecord, DeliveryRecordSummary } from '@/types';
 import { MOCK_TASK, MOCK_RISK_POINTS, MOCK_TEMP_ALERTS, MOCK_FEEDBACKS, MOCK_TEMP_RECORDS, MOCK_DRIVER } from '@/data/mock';
 import { getTempStatus, speakIfEnabled, formatTemp } from '@/utils';
 
@@ -12,19 +12,25 @@ interface AppState {
   feedbacks: FeedbackItem[];
   voiceEnabled: boolean;
   pendingAlertId: string | null;
+  pendingFeedbackType: 'checked' | 'need_help' | 'photo' | null;
+  lastDeliveryRecord: DeliveryRecordSummary | null;
 
   setTask: (task: Task) => void;
   createTask: (waybillNo: string, goodsType: GoodsType, tempMin: number, tempMax: number, extra?: Partial<Task>) => void;
   startTask: () => void;
   completeTask: () => void;
+  completeTaskWithDelivery: (delivery: Omit<DeliveryRecord, 'confirmTime' | 'tempSummary' | 'alertStats' | 'feedbackCount'>) => void;
   resetTask: () => void;
   updateCurrentTemp: (temp: number) => void;
   handleAlert: (alertId: string) => void;
   markAlertVoiced: (alertId: string) => void;
   resolveAlertsIfNeeded: (currentTemp: number, tempMin: number, tempMax: number) => void;
   addFeedback: (feedback: Omit<FeedbackItem, 'id' | 'createTime' | 'status'>) => void;
+  resolveFeedback: (feedbackId: string) => void;
   toggleVoice: () => void;
   setPendingAlertId: (id: string | null) => void;
+  setPendingFeedbackType: (type: 'checked' | 'need_help' | 'photo' | null) => void;
+  setDeliveryInfo: (info: DeliveryRecord) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -36,6 +42,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   feedbacks: MOCK_FEEDBACKS,
   voiceEnabled: true,
   pendingAlertId: null,
+  pendingFeedbackType: null,
+  lastDeliveryRecord: null,
 
   setTask: (task) => set({ task }),
 
@@ -68,13 +76,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       tempRecords: [],
       tempAlerts: [],
       feedbacks: [],
-      pendingAlertId: null
+      pendingAlertId: null,
+      pendingFeedbackType: null
     });
     console.log('[Store] createTask:', { waybillNo, goodsType, tempMin, tempMax, status: 'pending' });
   },
 
   startTask: () => {
-    const { task, tempMin, tempMax } = get();
+    const { task } = get();
     if (task && task.status === 'pending') {
       const now = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
       const currentTemp = task.currentTemp;
@@ -97,6 +106,53 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
+  completeTaskWithDelivery: (delivery) => {
+    const { task, tempRecords, tempAlerts, feedbacks } = get();
+    if (!task) return;
+
+    const temps = tempRecords.map(r => r.temp);
+    const avg = temps.reduce((s, t) => s + t, 0) / temps.length;
+    const max = Math.max(...temps);
+    const min = Math.min(...temps);
+    const normalCount = temps.filter(t => t >= task.tempMin && t <= task.tempMax).length;
+    const compliance = temps.length > 0 ? (normalCount / temps.length) * 100 : 0;
+
+    const totalAlerts = tempAlerts.length;
+    const resolvedAlerts = tempAlerts.filter(a => a.resolved).length;
+    const unhandledAlerts = tempAlerts.filter(a => !a.handled && !a.resolved).length;
+
+    const deliveryInfo: DeliveryRecord = {
+      ...delivery,
+      confirmTime: new Date().toLocaleString('zh-CN'),
+      tempSummary: {
+        avg: +avg.toFixed(1),
+        max: +max.toFixed(1),
+        min: +min.toFixed(1),
+        compliance: +compliance.toFixed(0)
+      },
+      alertStats: {
+        total: totalAlerts,
+        resolved: resolvedAlerts,
+        unhandled: unhandledAlerts
+      },
+      feedbackCount: feedbacks.length
+    };
+
+    const lastDeliverySummary: DeliveryRecordSummary = {
+      waybillNo: task.waybillNo,
+      route: `${task.loadingAddr.slice(0, 8)}→${task.unloadingAddr.slice(0, 8)}`,
+      confirmTime: deliveryInfo.confirmTime,
+      compliance: deliveryInfo.tempSummary.compliance,
+      goodsType: task.goodsType
+    };
+
+    set({
+      task: { ...task, status: 'completed', deliveryInfo },
+      lastDeliveryRecord: lastDeliverySummary
+    });
+    console.log('[Store] completeTaskWithDelivery:', deliveryInfo);
+  },
+
   resetTask: () => {
     set({
       task: null,
@@ -104,6 +160,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       tempRecords: [],
       feedbacks: [],
       pendingAlertId: null,
+      pendingFeedbackType: null,
       riskPoints: []
     });
     console.log('[Store] resetTask: back to new order');
@@ -225,13 +282,37 @@ export const useAppStore = create<AppState>((set, get) => ({
         tempAlerts: state.tempAlerts.map(a =>
           a.id === feedback.alertId ? { ...a, handled: true } : a
         ),
-        pendingAlertId: state.pendingAlertId === feedback.alertId ? null : state.pendingAlertId
+        pendingAlertId: state.pendingAlertId === feedback.alertId ? null : state.pendingAlertId,
+        pendingFeedbackType: null
       }));
       console.log('[Store] addFeedback: linked to alert', feedback.alertId, 'marked handled');
     } else {
-      set((state) => ({ feedbacks: [newFeedback, ...state.feedbacks] }));
+      set((state) => ({
+        feedbacks: [newFeedback, ...state.feedbacks],
+        pendingFeedbackType: null
+      }));
       console.log('[Store] addFeedback: standalone feedback');
     }
+  },
+
+  resolveFeedback: (feedbackId) => {
+    set((state) => {
+      const fb = state.feedbacks.find(f => f.id === feedbackId);
+      const now = new Date().toLocaleString('zh-CN');
+      const newFeedbacks = state.feedbacks.map(f =>
+        f.id === feedbackId
+          ? { ...f, status: 'resolved' as const, resolveTime: now }
+          : f
+      );
+      let newAlerts = state.tempAlerts;
+      if (fb?.alertId) {
+        newAlerts = state.tempAlerts.map(a =>
+          a.id === fb.alertId ? { ...a, resolved: true, handled: true } : a
+        );
+      }
+      console.log('[Store] resolveFeedback:', feedbackId, fb?.alertId ? 'alert resolved' : '');
+      return { feedbacks: newFeedbacks, tempAlerts: newAlerts };
+    });
   },
 
   toggleVoice: () => {
@@ -241,5 +322,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   setPendingAlertId: (id) => {
     set({ pendingAlertId: id });
     console.log('[Store] setPendingAlertId:', id);
+  },
+
+  setPendingFeedbackType: (type) => {
+    set({ pendingFeedbackType: type });
+    console.log('[Store] setPendingFeedbackType:', type);
+  },
+
+  setDeliveryInfo: (info) => {
+    const { task } = get();
+    if (task) {
+      set({ task: { ...task, deliveryInfo: info } });
+      console.log('[Store] setDeliveryInfo:', info);
+    }
   }
 }));

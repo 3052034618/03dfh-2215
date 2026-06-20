@@ -350,6 +350,96 @@
   color: $color-primary;
 }
 
+.statusResolved {
+  background: $color-success-bg;
+  color: $color-success;
+}
+
+/* 调度回复跟进区 */
+.followUpSection {
+  margin: 0 $page-padding $spacing-md;
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+}
+
+.followUpTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-md;
+  display: block;
+}
+
+.followUpRow {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+
+.followUpItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-xs;
+  flex: 1;
+  position: relative;
+
+  & + &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 20%;
+    bottom: 20%;
+    width: 2rpx;
+    background: $color-divider;
+  }
+}
+
+.followUpNum {
+  font-size: 48rpx;
+  font-weight: $font-weight-bold;
+  line-height: 1.2;
+}
+
+.followUpLabel {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+/* 解决按钮 */
+.resolveBtn {
+  @include button-reset;
+  width: 100%;
+  height: 80rpx;
+  margin-top: $spacing-md;
+  background: linear-gradient(135deg, $color-success 0%, $color-success-dark 100%);
+  border-radius: $radius-md;
+  color: $color-text-white;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+}
+
+.resolveInfo {
+  margin-top: $spacing-sm;
+  padding: $spacing-sm $spacing-md;
+  background: $color-success-bg;
+  border-radius: $radius-sm;
+  text-align: center;
+}
+
+.resolveInfoText {
+  font-size: $font-size-xs;
+  color: $color-success;
+  font-weight: $font-weight-medium;
+}
+
 .historyTime {
   display: block;
   font-size: $font-size-xs;

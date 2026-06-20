@@ -46,13 +46,14 @@ const typeMeta: Record<FeedbackType, {
 };
 
 const statusMeta: Record<FeedbackItem['status'], { text: string; class: string }> = {
-  sent: { text: '已发送', class: styles.statusSent },
+  sent: { text: '待回复', class: styles.statusSent },
   received: { text: '已收到', class: styles.statusReceived },
-  replied: { text: '已回复', class: styles.statusReplied }
+  replied: { text: '已回复', class: styles.statusReplied },
+  resolved: { text: '已解决', class: styles.statusResolved }
 };
 
 const FeedbackPage: React.FC = () => {
-  const { task, feedbacks, tempAlerts, addFeedback, voiceEnabled, pendingAlertId, setPendingAlertId } = useAppStore();
+  const { task, feedbacks, tempAlerts, addFeedback, resolveFeedback, voiceEnabled, pendingAlertId, pendingFeedbackType, setPendingAlertId, setPendingFeedbackType } = useAppStore();
 
   const [feedbackType, setFeedbackType] = useState<FeedbackType>('checked');
   const [content, setContent] = useState('');
@@ -83,14 +84,20 @@ const FeedbackPage: React.FC = () => {
   useEffect(() => {
     if (pendingAlertId && !selectedAlertId) {
       setSelectedAlertId(pendingAlertId);
-      const alert = tempAlerts.find(a => a.id === pendingAlertId);
-      if (alert) {
-        const isDanger = alert.severity === 'danger';
-        setFeedbackType(isDanger ? 'need_help' : 'checked');
-        Taro.showToast({ title: '已带入预警信息', icon: 'success' });
+      if (pendingFeedbackType) {
+        setFeedbackType(pendingFeedbackType);
+      } else {
+        const alert = tempAlerts.find(a => a.id === pendingAlertId);
+        if (alert) {
+          const isDanger = alert.severity === 'danger';
+          setFeedbackType(isDanger ? 'need_help' : 'checked');
+        }
       }
+      Taro.showToast({ title: '已带入预警信息', icon: 'success' });
+    } else if (pendingFeedbackType && !selectedAlertId) {
+      setFeedbackType(pendingFeedbackType);
     }
-  }, [pendingAlertId, selectedAlertId, tempAlerts]);
+  }, [pendingAlertId, pendingFeedbackType, selectedAlertId, tempAlerts]);
 
   const handleQuickAction = useCallback((type: FeedbackType) => {
     setFeedbackType(type);
@@ -191,8 +198,40 @@ const FeedbackPage: React.FC = () => {
     setFeedbackType('checked');
     setSelectedAlertId('');
     setPendingAlertId(null);
+    setPendingFeedbackType(null);
     setCheckResults({ door_seal: 'uncheck', refrigeration: 'uncheck', fuel: 'uncheck' });
-  }, [setPendingAlertId]);
+  }, [setPendingAlertId, setPendingFeedbackType]);
+
+  const needHelpFeedbacks = useMemo(
+    () => feedbacks.filter(f => f.type === 'need_help'),
+    [feedbacks]
+  );
+  const pendingReplyCount = useMemo(
+    () => needHelpFeedbacks.filter(f => f.status === 'sent' || f.status === 'received').length,
+    [needHelpFeedbacks]
+  );
+  const repliedCount = useMemo(
+    () => needHelpFeedbacks.filter(f => f.status === 'replied').length,
+    [needHelpFeedbacks]
+  );
+  const resolvedCount = useMemo(
+    () => needHelpFeedbacks.filter(f => f.status === 'resolved').length,
+    [needHelpFeedbacks]
+  );
+
+  const handleResolve = useCallback((feedbackId: string) => {
+    Taro.showModal({
+      title: '确认问题已解决？',
+      content: '确认后该条反馈将标记为已解决，关联预警也将自动关闭',
+      success: (res) => {
+        if (res.confirm) {
+          resolveFeedback(feedbackId);
+          Taro.showToast({ title: '已标记为已解决', icon: 'success' });
+          speakIfEnabled(voiceEnabled, '问题已确认解决，该预警已关闭');
+        }
+      }
+    });
+  }, [resolveFeedback, voiceEnabled]);
 
   const placeholderMap: Record<FeedbackType, string> = {
     checked: '可补充说明检查情况，例如：门封已重新扣紧、制冷机正常、油量68%',
@@ -236,6 +275,27 @@ const FeedbackPage: React.FC = () => {
           </Button>
         </View>
       </View>
+
+      {/* 调度回复跟进区 */}
+      {needHelpFeedbacks.length > 0 && (
+        <View className={styles.followUpSection}>
+          <Text className={styles.followUpTitle}>📋 调度回复跟进</Text>
+          <View className={styles.followUpRow}>
+            <View className={styles.followUpItem}>
+              <Text className={styles.followUpNum} style={{ color: '#f97316' }}>{pendingReplyCount}</Text>
+              <Text className={styles.followUpLabel}>待回复</Text>
+            </View>
+            <View className={styles.followUpItem}>
+              <Text className={styles.followUpNum} style={{ color: '#0284c7' }}>{repliedCount}</Text>
+              <Text className={styles.followUpLabel}>已回复</Text>
+            </View>
+            <View className={styles.followUpItem}>
+              <Text className={styles.followUpNum} style={{ color: '#10b981' }}>{resolvedCount}</Text>
+              <Text className={styles.followUpLabel}>已解决</Text>
+            </View>
+          </View>
+        </View>
+      )}
 
       <View className={styles.formSection}>
         <View className={styles.formCard}>
@@ -431,6 +491,21 @@ const FeedbackPage: React.FC = () => {
                     {fb.replyTime && (
                       <Text className={styles.historyReplyTime}>{fb.replyTime}</Text>
                     )}
+                  </View>
+                )}
+                {fb.type === 'need_help' && fb.status !== 'resolved' && fb.status !== 'sent' && (
+                  <Button
+                    className={styles.resolveBtn}
+                    onClick={() => handleResolve(fb.id)}
+                  >
+                    ✅ 确认问题已解决
+                  </Button>
+                )}
+                {fb.resolveTime && (
+                  <View className={styles.resolveInfo}>
+                    <Text className={styles.resolveInfoText}>
+                      司机于 {fb.resolveTime} 确认问题已解决
+                    </Text>
                   </View>
                 )}
               </View>

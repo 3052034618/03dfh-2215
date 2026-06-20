@@ -67,7 +67,9 @@ export const MOCK_RISK_POINTS: RiskPoint[] = [
     distanceKm: 6,
     estimatedDelayMin: 28,
     estimatedTempRise: 1.8,
-    severity: 'medium'
+    severity: 'medium',
+    suggestedAction: 'increase_cooling',
+    actionText: '建议提前加强制冷，将温度下调1-2℃，预留拥堵升温空间'
   },
   {
     id: 'RISK002',
@@ -77,7 +79,9 @@ export const MOCK_RISK_POINTS: RiskPoint[] = [
     distanceKm: 128,
     estimatedDelayMin: 45,
     estimatedTempRise: 2.3,
-    severity: 'high'
+    severity: 'high',
+    suggestedAction: 'stop_check',
+    actionText: '建议就近服务区停车检查门封密封性，必要时关闭回风阀加强制冷'
   }
 ];
 
@@ -157,6 +161,23 @@ export const MOCK_TEMP_RECORDS: TempRecord[] = [
 ];
 
 export const MOCK_FEEDBACKS: FeedbackItem[] = [
+  {
+    id: 'FB004',
+    taskId: 'TASK20260621001',
+    alertId: 'ALERT002',
+    type: 'checked',
+    content: '已按调度建议重新扣紧门封并调整制冷温度，目前温度已恢复正常',
+    checkItems: [
+      { key: 'door_seal', label: '门封', status: 'normal' },
+      { key: 'refrigeration', label: '制冷机', status: 'normal' },
+      { key: 'fuel', label: '油量', status: 'normal' }
+    ],
+    createTime: '2026-06-21 13:05',
+    status: 'resolved',
+    reply: '收到，温度已恢复正常，请继续监控，有问题随时反馈',
+    replyTime: '2026-06-21 13:10',
+    resolveTime: '2026-06-21 13:15'
+  },
   {
     id: 'FB003',
     taskId: 'TASK20260621001',

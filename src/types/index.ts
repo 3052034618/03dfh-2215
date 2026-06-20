@@ -25,6 +25,7 @@ export interface Task {
   fuelLevel: number;
   distance: number;
   elapsedTime: string;
+  deliveryInfo?: DeliveryRecord;
 }
 
 export interface RiskPoint {
@@ -36,6 +37,8 @@ export interface RiskPoint {
   estimatedDelayMin: number;
   estimatedTempRise: number;
   severity: 'low' | 'medium' | 'high';
+  suggestedAction: 'increase_cooling' | 'stop_check';
+  actionText: string;
 }
 
 export type CheckItemKey = 'door_seal' | 'refrigeration' | 'fuel';
@@ -76,9 +79,37 @@ export interface FeedbackItem {
   checkItems?: CheckItemResult[];
   photos?: string[];
   createTime: string;
-  status: 'sent' | 'received' | 'replied';
+  status: 'sent' | 'received' | 'replied' | 'resolved';
   reply?: string;
   replyTime?: string;
+  resolveTime?: string;
+}
+
+export interface DeliveryRecord {
+  receiverName: string;
+  deliveryNote: string;
+  photos: string[];
+  confirmTime: string;
+  tempSummary: {
+    avg: number;
+    max: number;
+    min: number;
+    compliance: number;
+  };
+  alertStats: {
+    total: number;
+    resolved: number;
+    unhandled: number;
+  };
+  feedbackCount: number;
+}
+
+export interface DeliveryRecordSummary {
+  waybillNo: string;
+  route: string;
+  confirmTime: string;
+  compliance: number;
+  goodsType: GoodsType;
 }
 
 export interface CheckItemResult {

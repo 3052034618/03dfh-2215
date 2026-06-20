@@ -8,7 +8,7 @@ import classnames from 'classnames';
 import styles from './index.module.scss';
 
 const AlertPage: React.FC = () => {
-  const { task, tempAlerts, tempRecords, voiceEnabled, handleAlert, toggleVoice, setPendingAlertId } = useAppStore();
+  const { task, tempAlerts, tempRecords, voiceEnabled, handleAlert, toggleVoice, setPendingAlertId, setPendingFeedbackType } = useAppStore();
 
   const unhandledCount = useMemo(
     () => tempAlerts.filter(a => !a.handled && !a.resolved).length,
@@ -69,6 +69,7 @@ const AlertPage: React.FC = () => {
   const handleMarkChecked = useCallback(async (alertId) => {
     try {
       setPendingAlertId(alertId);
+      setPendingFeedbackType('checked');
       Taro.showToast({ title: '已带入预警信息', icon: 'success' });
       setTimeout(() => {
         Taro.switchTab({ url: '/pages/feedback/index' });
@@ -76,12 +77,13 @@ const AlertPage: React.FC = () => {
     } catch (e) {
       console.error('[AlertPage] handleMarkChecked error:', e);
     }
-  }, [setPendingAlertId]);
+  }, [setPendingAlertId, setPendingFeedbackType]);
 
   const handleGoFeedback = useCallback((alertId) => {
     setPendingAlertId(alertId);
+    setPendingFeedbackType('need_help');
     Taro.switchTab({ url: '/pages/feedback/index' });
-  }, [setPendingAlertId]);
+  }, [setPendingAlertId, setPendingFeedbackType]);
 
   if (!task) {
     return (
